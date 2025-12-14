@@ -1,0 +1,75 @@
+# docker-compose.yml file
+
+version: '3.8'
+
+services:
+  # --- PostgreSQL Database Service ---
+  db:
+    image: postgres:14-alpine
+    restart: unless-stopped
+    ports:
+      # Maps local port 5432 to container port 5432
+      - "${DB_PORT}:${DB_PORT}"
+    volumes:
+      # Persist data even if the container is removed
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      # Match these variables to your .env file settings
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+      PGPORT: ${DB_PORT}
+    networks:
+      - app-network
+
+  # --- RabbitMQ Messaging Service ---
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    restart: unless-stopped
+    ports:
+      # Maps local port 5672 (AMQP protocol)
+      - "5672:5672"
+      # Maps local port 15672 for the management UI (http://localhost:15672)
+      - "15672:15672"
+    environment:
+      # RabbitMQ uses guest/guest by default, which matches the .env file
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    networks:
+      - app-network
+
+  # --- NestJS Application Service ---
+  app:
+    # Assumes you have a Dockerfile in your root directory to build the app image
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      # Maps local port 3000 to container port 3000 (as defined in .env PORT=3000)
+      - "3000:3000"
+    depends_on:
+      # Ensure DB and RabbitMQ start before the application tries to connect
+      - db
+      - rabbitmq
+    environment:
+      # Pass environment variables from your local .env file into the container
+      DB_HOST: db # Use the service name 'db' as the hostname
+      DB_PORT: ${DB_PORT}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672 # Use service name 'rabbitmq' as the hostname
+      RABBITMQ_TASK_EXCHANGE: ${RABBITMQ_TASK_EXCHANGE}
+      RABBITMQ_TASK_QUEUE_LOG: ${RABBITMQ_TASK_QUEUE_LOG}
+    networks:
+      - app-network
+
+# Define volumes for data persistence
+volumes:
+  postgres_data:
+
+    # Define a shared network
+networks:
+  app-network:
+    driver: bridge
