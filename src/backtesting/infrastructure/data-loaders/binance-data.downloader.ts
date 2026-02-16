@@ -1,4 +1,5 @@
 import axios, { AxiosInstance } from 'axios';
+import { ConfigService } from '@nestjs/config';
 import { createHash } from 'crypto';
 import { createReadStream, existsSync, unlinkSync } from 'fs';
 import { mkdir } from 'fs/promises';
@@ -16,6 +17,7 @@ import {
 @Injectable()
 export class BinanceDataDownloader {
   private readonly axiosInstance: AxiosInstance;
+  private readonly cacheDir: string;
   private readonly baseUrl =
     'https://data.binance.vision/data/futures/um/monthly/klines';
   private readonly maxRetries: number;
@@ -23,10 +25,16 @@ export class BinanceDataDownloader {
 
   constructor(
     @Inject(LOGGER_TOKEN) private readonly logger: ILogger,
-    private readonly cacheDir: string,
+    private readonly configService: ConfigService,
   ) {
-    this.maxRetries = 3;
-    this.downloadTimeoutMs = 30_000;
+    this.cacheDir =
+      this.configService.get<string>('BINANCE_DATA_DIR') ?? 'data/binance';
+    this.maxRetries = Number(
+      this.configService.get<string>('BINANCE_RETRY_MAX') ?? '3',
+    );
+    this.downloadTimeoutMs = Number(
+      this.configService.get<string>('BINANCE_DOWNLOAD_TIMEOUT_MS') ?? '30000',
+    );
 
     this.axiosInstance = axios.create({
       timeout: this.downloadTimeoutMs,

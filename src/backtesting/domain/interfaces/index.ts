@@ -18,3 +18,11 @@ export {
   type ITradeSimulator,
   TRADE_SIMULATOR_TOKEN,
 } from './trade-simulator.interface';
+export {
+  type IDownloadManager,
+  type ImportBinanceJobResult,
+  type ImportBinanceRequest,
+  type ImportJobProgress,
+  type ImportJobStatus,
+  DOWNLOAD_MANAGER_TOKEN,
+} from './download-manager.interface';
