@@ -21,3 +21,121 @@ model Task {
 
   @@map("tasks")
 }
+
+// Backtesting Models
+model MarketData {
+  id                    String   @id @default(uuid())
+  symbol                String
+  interval              String   // "1m", "5m", "15m", "1h", etc.
+  openTime              BigInt   // ms Unix timestamp
+  closeTime             BigInt   // ms Unix timestamp
+  open                  String   // Decimal for precision
+  high                  String
+  low                   String
+  close                 String
+  volume                String   // Base asset volume
+  quoteAssetVolume      String   // Quote asset volume
+  numberOfTrades        Int
+  takerBuyBaseVolume    String
+  takerBuyQuoteVolume   String
+  createdAt             DateTime @default(now())
+
+  @@unique([symbol, interval, openTime])
+  @@index([symbol, interval, openTime])
+  @@index([symbol, interval, createdAt])
+  @@map("market_data")
+}
+
+model DownloadJob {
+  id                    String   @id @default(uuid())
+  symbol                String
+  interval              String
+  startDate             DateTime
+  endDate               DateTime
+  status                String   @default("pending") // pending, downloading, completed, failed
+  totalFiles            Int      @default(0)
+  downloadedFiles       Int      @default(0)
+  failedFiles           Int      @default(0)
+  checksumValid         Boolean  @default(false)
+  lastSuccessfulTime    BigInt?  // ms timestamp of last successful candle
+  errorMessage          String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([symbol, interval, status])
+  @@map("download_jobs")
+}
+
+model BacktestRun {
+  id                    String   @id @default(uuid())
+  symbol                String
+  interval              String   // e.g., "1m"
+  strategyVersion       String   // e.g., "fvg-bos-v1"
+  config                Json     // BacktestConfig serialized
+  startTime             BigInt   // ms
+  endTime               BigInt   // ms
+  totalTrades           Int      @default(0)
+  winningTrades         Int      @default(0)
+  losingTrades          Int      @default(0)
+  winRate               Float    @default(0)
+  totalPnL              String   // Decimal
+  maxDrawdown           String   // Decimal
+  sharpeRatio           Float    @default(0)
+  profitFactor          Float    @default(0)
+  avgWin                String   // Decimal
+  avgLoss               String   // Decimal
+  trades                BacktestTrade[]
+  signals               SignalEvent[]
+  equityPoints          EquityPoint[]
+  createdAt             DateTime @default(now())
+
+  @@index([symbol, strategyVersion, createdAt])
+  @@map("backtest_runs")
+}
+
+model BacktestTrade {
+  id                    String   @id @default(uuid())
+  backtest              BacktestRun @relation(fields: [backtestRunId], references: [id], onDelete: Cascade)
+  backtestRunId         String
+  entryTime             BigInt   // ms
+  exitTime              BigInt?  // ms (null if open)
+  entryPrice            String   // Decimal
+  exitPrice             String?  // Decimal
+  quantity              String   // Decimal
+  side                  String   // "BUY" or "SELL"
+  pnl                   String   // Decimal
+  pnlPercent            Float    @default(0)
+  status                String   @default("open") // open, closed, cancelled
+  createdAt             DateTime @default(now())
+
+  @@index([backtestRunId, status])
+  @@map("backtest_trades")
+}
+
+model SignalEvent {
+  id                    String   @id @default(uuid())
+  backtest              BacktestRun @relation(fields: [backtestRunId], references: [id], onDelete: Cascade)
+  backtestRunId         String
+  timestamp             BigInt   // ms
+  signalType            String   // "BUY", "SELL", "INVALID"
+  reason                String   // "fvg_bos_confluence", etc.
+  price                 String   // Decimal
+  metadata              Json?    // Additional signal info
+  createdAt             DateTime @default(now())
+
+  @@index([backtestRunId, timestamp])
+  @@map("signal_events")
+}
+
+model EquityPoint {
+  id                    String   @id @default(uuid())
+  backtest              BacktestRun @relation(fields: [backtestRunId], references: [id], onDelete: Cascade)
+  backtestRunId         String
+  timestamp             BigInt   // ms
+  equity                String   // Decimal
+  drawdown              String   // Decimal
+  createdAt             DateTime @default(now())
+
+  @@index([backtestRunId, timestamp])
+  @@map("equity_points")
+}

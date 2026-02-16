@@ -6,7 +6,8 @@ import {
 } from '@nestjs/common';
 import * as amqp from 'amqplib';
 import { IConnectionService } from '../interfaces/connection.service.interface';
-import { type ILogger, LOGGER_TOKEN } from '../interfaces/logger.interface';
+import type { ILogger } from '../interfaces/logger.interface';
+import { LOGGER_TOKEN } from '../interfaces/logger.interface';
 import { ConfigService } from '@nestjs/config';
 import { isErrorLike } from '../utils/type-guards';
 
