@@ -2,12 +2,12 @@ import { Injectable, Inject } from '@nestjs/common';
 import {
   type ILogger,
   LOGGER_TOKEN,
-} from '../../../core/interfaces/logger.interface';
-import { IEventPublisher } from '../../../core/interfaces/event-publisher.interface';
+} from 'src/core/interfaces/logger.interface';
+import { IEventPublisher } from 'src/core/interfaces/event-publisher.interface';
 import {
   type IConnectionService,
   CONNECTION_SERVICE_TOKEN,
-} from '../../../core/interfaces/connection.service.interface';
+} from 'src/core/interfaces/connection.service.interface';
 import { ConfigService } from '@nestjs/config';
 import { isErrorLike } from 'src/core/utils/type-guards';
 @Injectable()
@@ -51,3 +51,4 @@ export class RabbitMQEventPublisher implements IEventPublisher {
     }
   }
 }
+// (connection service import moved to top)

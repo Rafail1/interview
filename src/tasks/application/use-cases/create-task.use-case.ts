@@ -2,16 +2,16 @@ import { Inject, Injectable } from '@nestjs/common';
 import {
   TASK_REPOSITORY_TOKEN,
   type ITaskRepository,
-} from '../../domain/interfaces/task.repository.interface';
-import { Task } from '../../domain/entities/task.entity';
-import { CreateTaskDto } from '../../interfaces/dtos/task.dto';
+} from 'src/tasks/domain/interfaces/task.repository.interface';
+import { Task } from 'src/tasks/domain/entities/task.entity';
+import { CreateTaskDto } from 'src/tasks/interfaces/dtos/task.dto';
 import { randomUUID } from 'crypto';
 import {
   LOGGER_TOKEN,
   type ILogger,
-} from '../../../core/interfaces/logger.interface';
-import { TaskStatus } from '../../domain/value-objects/task-status.value-object';
-import { Priority } from '../../domain/value-objects/priority.value-object';
+} from 'src/core/interfaces/logger.interface';
+import { TaskStatus } from 'src/tasks/domain/value-objects/task-status.value-object';
+import { Priority } from 'src/tasks/domain/value-objects/priority.value-object';
 
 @Injectable()
 export class CreateTaskUseCase {

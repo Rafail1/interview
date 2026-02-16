@@ -2,12 +2,12 @@ import { Inject, Injectable } from '@nestjs/common';
 import {
   TASK_REPOSITORY_TOKEN,
   type ITaskRepository,
-} from '../../domain/interfaces/task.repository.interface';
-import { Task } from '../../domain/entities/task.entity';
+} from 'src/tasks/domain/interfaces/task.repository.interface';
+import { Task } from 'src/tasks/domain/entities/task.entity';
 import {
   LOGGER_TOKEN,
   type ILogger,
-} from '../../../core/interfaces/logger.interface';
+} from 'src/core/interfaces/logger.interface';
 
 @Injectable()
 export class GetTasksUseCase {
