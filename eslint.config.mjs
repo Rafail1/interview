@@ -37,6 +37,58 @@ export default tseslint.config(
       '@typescript-eslint/no-unsafe-argument': 'warn',
       
       "prettier/prettier": ["error", { endOfLine: "auto" }],
+        // Project layering: warn when inner layers import from forbidden outer layers
+        'import/no-restricted-paths': [
+          'warn',
+          {
+            zones: [
+              {
+                target: './src/tasks/domain',
+                from: './src/tasks/infrastructure',
+              },
+              {
+                target: './src/tasks/domain',
+                from: './src/tasks/interfaces/http',
+              },
+              {
+                target: './src/tasks/application',
+                from: './src/tasks/infrastructure',
+              },
+            ],
+          },
+        ],
+
+        // Avoid deep relative imports; prefer tsconfig paths or shorter imports
+        'no-restricted-imports': [
+          'warn',
+          {
+            patterns: ['../../*', '../../../*', '../../../../*'],
+          },
+        ],
+
+        // Enforce exported DI tokens naming: UPPER_SNAKE and ending with _TOKEN
+        '@typescript-eslint/naming-convention': [
+          'warn',
+          {
+            selector: 'variable',
+            modifiers: ['exported'],
+            format: ['UPPER_CASE'],
+            custom: {
+              regex: '.*_TOKEN$',
+              match: true,
+            },
+          },
+        ],
+
+        // Discourage usage of infra-only packages in domain (example)
+        'import/no-extraneous-dependencies': [
+          'warn',
+          {
+            devDependencies: false,
+            optionalDependencies: false,
+            peerDependencies: false,
+          },
+        ],
     },
   },
 );
