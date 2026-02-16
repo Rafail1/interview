@@ -1,15 +1,22 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { Candle } from 'src/backtesting/domain/entities/candle.entity';
 import { Signal } from 'src/backtesting/domain/entities/signal.entity';
+import {
+  FVG_DETECTOR_TOKEN,
+  type IFvgDetector,
+} from 'src/backtesting/domain/interfaces/fvg-detector.interface';
+import {
+  type IStructureDetector,
+  STRUCTURE_DETECTOR_TOKEN,
+} from 'src/backtesting/domain/interfaces/structure-detector.interface';
 import { IStrategyEvaluator } from 'src/backtesting/domain/interfaces/strategy-evaluator.interface';
-import { FvgDetector } from './fvg.detector';
-import { StructureDetector } from './structure.detector';
 
 @Injectable()
 export class StrategyEvaluator implements IStrategyEvaluator {
   constructor(
-    private readonly fvgDetector: FvgDetector,
-    private readonly structureDetector: StructureDetector,
+    @Inject(FVG_DETECTOR_TOKEN) private readonly fvgDetector: IFvgDetector,
+    @Inject(STRUCTURE_DETECTOR_TOKEN)
+    private readonly structureDetector: IStructureDetector,
   ) {}
 
   public evaluate(candle1m: Candle, candle15m: Candle | null = null): Signal[] {
@@ -25,7 +32,9 @@ export class StrategyEvaluator implements IStrategyEvaluator {
       return [];
     }
 
-    const activeFvgs = this.fvgDetector.getActiveFvgs();
+    const activeFvgs = this.fvgDetector
+      .getCurrentState()
+      .filter((zone) => !zone.isMitigated());
     const price = candle1m.getClose();
     const time = candle1m.getCloseTime();
     const signalId = `signal-${time.toMsNumber()}`;

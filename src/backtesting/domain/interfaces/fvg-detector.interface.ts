@@ -13,6 +13,11 @@ export interface IFvgDetector {
   detect(candle: Candle): FVGZone[];
 
   /**
+   * Get all detected zones.
+   */
+  getCurrentState(): FVGZone[];
+
+  /**
    * Batch reset for new backtest
    */
   reset(): void;
