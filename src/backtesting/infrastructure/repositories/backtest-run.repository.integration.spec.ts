@@ -224,4 +224,123 @@ maybeDescribe('BacktestRunRepository integration', () => {
       '-1.5',
     ]);
   });
+
+  it('reads signals by run id in ascending timestamp order', async () => {
+    const runId = await repository.saveRun({
+      symbol: 'BTCUSDT',
+      interval: '15m',
+      strategyVersion: 'fvg-bos-v1',
+      config: {},
+      startTimeMs: 1704067200000n,
+      endTimeMs: 1704067319999n,
+      metrics: {
+        totalTrades: 0,
+        winningTrades: 0,
+        losingTrades: 0,
+        winRate: '0',
+        totalPnL: '0',
+        maxDrawdown: '0',
+        sharpeRatio: '0',
+        profitFactor: '0',
+        avgWin: '0',
+        avgLoss: '0',
+      },
+      trades: [],
+      signals: [
+        {
+          timestampMs: 1704067260000n,
+          signalType: 'SELL',
+          reason: 'later_signal',
+          price: '42280.50',
+          metadata: { order: 2 },
+        },
+        {
+          timestampMs: 1704067200000n,
+          signalType: 'BUY',
+          reason: 'earlier_signal',
+          price: '42250.10',
+          metadata: { order: 1 },
+        },
+      ],
+    });
+    createdRunIds.push(runId);
+
+    const signals = await repository.findSignalsByRunId(runId);
+
+    expect(signals).not.toBeNull();
+    expect(signals).toHaveLength(2);
+    expect(signals?.[0]).toEqual(
+      expect.objectContaining({
+        timestamp: '1704067200000',
+        signalType: 'BUY',
+        reason: 'earlier_signal',
+        price: '42250.10',
+      }),
+    );
+    expect(signals?.[1]).toEqual(
+      expect.objectContaining({
+        timestamp: '1704067260000',
+        signalType: 'SELL',
+        reason: 'later_signal',
+        price: '42280.50',
+      }),
+    );
+    expect(signals?.[0].metadata).toEqual({ order: 1 });
+  });
+
+  it('reads equity points by run id in ascending timestamp order', async () => {
+    const runId = await repository.saveRun({
+      symbol: 'BTCUSDT',
+      interval: '15m',
+      strategyVersion: 'fvg-bos-v1',
+      config: {},
+      startTimeMs: 1704067200000n,
+      endTimeMs: 1704067319999n,
+      metrics: {
+        totalTrades: 0,
+        winningTrades: 0,
+        losingTrades: 0,
+        winRate: '0',
+        totalPnL: '0',
+        maxDrawdown: '0',
+        sharpeRatio: '0',
+        profitFactor: '0',
+        avgWin: '0',
+        avgLoss: '0',
+      },
+      trades: [],
+      equityPoints: [
+        {
+          timestampMs: 1704067260000n,
+          equity: '10025.50',
+          drawdown: '0',
+        },
+        {
+          timestampMs: 1704067200000n,
+          equity: '10000',
+          drawdown: '0',
+        },
+      ],
+    });
+    createdRunIds.push(runId);
+
+    const equityPoints = await repository.findEquityByRunId(runId);
+
+    expect(equityPoints).not.toBeNull();
+    expect(equityPoints).toHaveLength(2);
+    expect(equityPoints?.[0]).toEqual(
+      expect.objectContaining({
+        timestamp: '1704067200000',
+        equity: '10000',
+        drawdown: '0',
+      }),
+    );
+    expect(equityPoints?.[1]).toEqual(
+      expect.objectContaining({
+        timestamp: '1704067260000',
+        equity: '10025.50',
+        drawdown: '0',
+      }),
+    );
+  });
 });
