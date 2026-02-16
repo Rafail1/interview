@@ -22,8 +22,45 @@ export type SaveBacktestRunInput = {
   trades: Trade[];
 };
 
+export type BacktestTradeView = {
+  id: string;
+  entryTime: string;
+  exitTime: string | null;
+  entryPrice: string;
+  exitPrice: string | null;
+  quantity: string;
+  side: string;
+  pnl: string;
+  pnlPercent: number;
+  status: string;
+  createdAt: Date;
+};
+
+export type BacktestRunView = {
+  id: string;
+  symbol: string;
+  interval: string;
+  strategyVersion: string;
+  config: Record<string, unknown>;
+  startTime: string;
+  endTime: string;
+  totalTrades: number;
+  winningTrades: number;
+  losingTrades: number;
+  winRate: number;
+  totalPnL: string;
+  maxDrawdown: string;
+  sharpeRatio: number;
+  profitFactor: number;
+  avgWin: string;
+  avgLoss: string;
+  createdAt: Date;
+  trades: BacktestTradeView[];
+};
+
 export interface IBacktestRunRepository {
   saveRun(input: SaveBacktestRunInput): Promise<string>;
+  findById(runId: string): Promise<BacktestRunView | null>;
 }
 
 export const BACKTEST_RUN_REPOSITORY_TOKEN = Symbol('IBacktestRunRepository');

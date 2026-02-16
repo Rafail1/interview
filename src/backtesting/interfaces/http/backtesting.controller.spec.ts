@@ -16,12 +16,14 @@ describe('BacktestingController', () => {
     const getStatusUseCaseMock = { execute: jest.fn() } as any;
     const getQueueOverviewUseCaseMock = { execute: jest.fn() } as any;
     const runBacktestUseCaseMock = { execute: jest.fn() } as any;
+    const getBacktestRunUseCaseMock = { execute: jest.fn() } as any;
 
     const controller = new BacktestingController(
       importUseCaseMock,
       getStatusUseCaseMock,
       getQueueOverviewUseCaseMock,
       runBacktestUseCaseMock,
+      getBacktestRunUseCaseMock,
     );
 
     const dto: ImportBinanceDataRequestDto = {
@@ -69,12 +71,14 @@ describe('BacktestingController', () => {
     } as any;
     const getQueueOverviewUseCaseMock = { execute: jest.fn() } as any;
     const runBacktestUseCaseMock = { execute: jest.fn() } as any;
+    const getBacktestRunUseCaseMock = { execute: jest.fn() } as any;
 
     const controller = new BacktestingController(
       importUseCaseMock,
       getStatusUseCaseMock,
       getQueueOverviewUseCaseMock,
       runBacktestUseCaseMock,
+      getBacktestRunUseCaseMock,
     );
 
     const result = await controller.getImportJobStatus('job-1');
@@ -91,12 +95,14 @@ describe('BacktestingController', () => {
     } as any;
     const getQueueOverviewUseCaseMock = { execute: jest.fn() } as any;
     const runBacktestUseCaseMock = { execute: jest.fn() } as any;
+    const getBacktestRunUseCaseMock = { execute: jest.fn() } as any;
 
     const controller = new BacktestingController(
       importUseCaseMock,
       getStatusUseCaseMock,
       getQueueOverviewUseCaseMock,
       runBacktestUseCaseMock,
+      getBacktestRunUseCaseMock,
     );
 
     await expect(controller.getImportJobStatus('missing-job')).rejects.toBeInstanceOf(
@@ -117,12 +123,14 @@ describe('BacktestingController', () => {
       const getStatusUseCaseMock = { execute: jest.fn() } as any;
       const getQueueOverviewUseCaseMock = { execute: jest.fn() } as any;
       const runBacktestUseCaseMock = { execute: jest.fn() } as any;
+      const getBacktestRunUseCaseMock = { execute: jest.fn() } as any;
 
       const controller = new BacktestingController(
         importUseCaseMock,
         getStatusUseCaseMock,
         getQueueOverviewUseCaseMock,
         runBacktestUseCaseMock,
+        getBacktestRunUseCaseMock,
       );
 
       const dto: ImportBinanceDataRequestDto = {
@@ -158,12 +166,14 @@ describe('BacktestingController', () => {
       }),
     } as any;
     const runBacktestUseCaseMock = { execute: jest.fn() } as any;
+    const getBacktestRunUseCaseMock = { execute: jest.fn() } as any;
 
     const controller = new BacktestingController(
       importUseCaseMock,
       getStatusUseCaseMock,
       getQueueOverviewUseCaseMock,
       runBacktestUseCaseMock,
+      getBacktestRunUseCaseMock,
     );
 
     const result = controller.getImportQueueOverview();
@@ -214,12 +224,14 @@ describe('BacktestingController', () => {
         },
       }),
     } as any;
+    const getBacktestRunUseCaseMock = { execute: jest.fn() } as any;
 
     const controller = new BacktestingController(
       importUseCaseMock,
       getStatusUseCaseMock,
       getQueueOverviewUseCaseMock,
       runBacktestUseCaseMock,
+      getBacktestRunUseCaseMock,
     );
 
     const result = await controller.runBacktest({
@@ -234,5 +246,71 @@ describe('BacktestingController', () => {
     expect(result).toHaveProperty('runId', 'run-1');
     expect(result).toHaveProperty('symbol', 'BTCUSDT');
     expect(result).toHaveProperty('metrics.totalTrades', 2);
+  });
+
+  it('getBacktestRun returns persisted run payload when found', async () => {
+    const importUseCaseMock = { execute: jest.fn() } as any;
+    const getStatusUseCaseMock = { execute: jest.fn() } as any;
+    const getQueueOverviewUseCaseMock = { execute: jest.fn() } as any;
+    const runBacktestUseCaseMock = { execute: jest.fn() } as any;
+    const getBacktestRunUseCaseMock = {
+      execute: jest.fn().mockResolvedValue({
+        id: 'run-1',
+        symbol: 'BTCUSDT',
+        interval: '15m',
+        strategyVersion: 'fvg-bos-v1',
+        config: { fromInterval: '1m', toInterval: '15m' },
+        startTime: '1704067200000',
+        endTime: '1706745599000',
+        totalTrades: 2,
+        winningTrades: 1,
+        losingTrades: 1,
+        winRate: 50,
+        totalPnL: '12.30',
+        maxDrawdown: '8.00',
+        sharpeRatio: 0.55,
+        profitFactor: 1.97,
+        avgWin: '25.00',
+        avgLoss: '-12.70',
+        createdAt: new Date('2024-02-01T00:00:00.000Z'),
+        trades: [],
+      }),
+    } as any;
+
+    const controller = new BacktestingController(
+      importUseCaseMock,
+      getStatusUseCaseMock,
+      getQueueOverviewUseCaseMock,
+      runBacktestUseCaseMock,
+      getBacktestRunUseCaseMock,
+    );
+
+    const result = await controller.getBacktestRun('run-1');
+
+    expect(getBacktestRunUseCaseMock.execute).toHaveBeenCalledWith('run-1');
+    expect(result).toHaveProperty('id', 'run-1');
+    expect(result).toHaveProperty('symbol', 'BTCUSDT');
+  });
+
+  it('getBacktestRun throws NotFoundException when run missing', async () => {
+    const importUseCaseMock = { execute: jest.fn() } as any;
+    const getStatusUseCaseMock = { execute: jest.fn() } as any;
+    const getQueueOverviewUseCaseMock = { execute: jest.fn() } as any;
+    const runBacktestUseCaseMock = { execute: jest.fn() } as any;
+    const getBacktestRunUseCaseMock = {
+      execute: jest.fn().mockResolvedValue(null),
+    } as any;
+
+    const controller = new BacktestingController(
+      importUseCaseMock,
+      getStatusUseCaseMock,
+      getQueueOverviewUseCaseMock,
+      runBacktestUseCaseMock,
+      getBacktestRunUseCaseMock,
+    );
+
+    await expect(controller.getBacktestRun('missing-run')).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
   });
 });

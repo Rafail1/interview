@@ -26,4 +26,23 @@ export class BacktestRunRepository implements IBacktestRunRepository {
 
     return run.id;
   }
+
+  public async findById(runId: string) {
+    const run = await this.prisma.backtestRun.findUnique({
+      where: { id: runId },
+      include: {
+        trades: {
+          orderBy: {
+            entryTime: 'asc',
+          },
+        },
+      },
+    });
+
+    if (!run) {
+      return null;
+    }
+
+    return this.backtestRunMapper.toDomainRun(run);
+  }
 }

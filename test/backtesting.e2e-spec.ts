@@ -4,6 +4,7 @@ import request from 'supertest';
 import { GetImportJobStatusUseCase } from '../src/backtesting/application/use-cases/get-import-job-status.use-case';
 import { GetImportQueueOverviewUseCase } from '../src/backtesting/application/use-cases/get-import-queue-overview.use-case';
 import { ImportBinanceDataUseCase } from '../src/backtesting/application/use-cases/import-binance-data.use-case';
+import { GetBacktestRunUseCase } from '../src/backtesting/application/use-cases/get-backtest-run.use-case';
 import { RunBacktestUseCase } from '../src/backtesting/application/use-cases/run-backtest.use-case';
 import { BacktestingController } from '../src/backtesting/interfaces/http/backtesting.controller';
 
@@ -26,6 +27,10 @@ describe('Backtesting (e2e)', () => {
     execute: jest.fn(),
   };
 
+  const getBacktestRunUseCaseMock = {
+    execute: jest.fn(),
+  };
+
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       controllers: [BacktestingController],
@@ -45,6 +50,10 @@ describe('Backtesting (e2e)', () => {
         {
           provide: RunBacktestUseCase,
           useValue: runBacktestUseCaseMock,
+        },
+        {
+          provide: GetBacktestRunUseCase,
+          useValue: getBacktestRunUseCaseMock,
         },
       ],
     }).compile();
@@ -318,6 +327,46 @@ describe('Backtesting (e2e)', () => {
     expect(res.body).toHaveProperty('runId', 'run-e2e-1');
     expect(res.body).toHaveProperty('symbol', 'BTCUSDT');
     expect(res.body).toHaveProperty('metrics.totalTrades', 2);
+  });
+
+  it('GET /backtesting/run/:runId returns persisted run details', async () => {
+    getBacktestRunUseCaseMock.execute.mockResolvedValue({
+      id: 'run-e2e-1',
+      symbol: 'BTCUSDT',
+      interval: '15m',
+      strategyVersion: 'fvg-bos-v1',
+      config: { fromInterval: '1m', toInterval: '15m' },
+      startTime: '1704067200000',
+      endTime: '1706745599000',
+      totalTrades: 2,
+      winningTrades: 1,
+      losingTrades: 1,
+      winRate: 50,
+      totalPnL: '12.30',
+      maxDrawdown: '8.00',
+      sharpeRatio: 0.55,
+      profitFactor: 1.97,
+      avgWin: '25.00',
+      avgLoss: '-12.70',
+      createdAt: '2024-02-01T00:00:00.000Z',
+      trades: [],
+    });
+
+    const res = await request(app.getHttpServer())
+      .get('/backtesting/run/run-e2e-1')
+      .expect(200);
+
+    expect(getBacktestRunUseCaseMock.execute).toHaveBeenCalledWith('run-e2e-1');
+    expect(res.body).toHaveProperty('id', 'run-e2e-1');
+    expect(res.body).toHaveProperty('symbol', 'BTCUSDT');
+  });
+
+  it('GET /backtesting/run/:runId returns 404 when run not found', async () => {
+    getBacktestRunUseCaseMock.execute.mockResolvedValueOnce(null);
+
+    await request(app.getHttpServer())
+      .get('/backtesting/run/missing-run')
+      .expect(404);
   });
 
   it('POST /backtesting/run rejects invalid payload', async () => {

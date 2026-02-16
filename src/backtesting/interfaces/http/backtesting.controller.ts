@@ -17,7 +17,9 @@ import {
 import { GetImportJobStatusUseCase } from 'src/backtesting/application/use-cases/get-import-job-status.use-case';
 import { GetImportQueueOverviewUseCase } from 'src/backtesting/application/use-cases/get-import-queue-overview.use-case';
 import { ImportBinanceDataUseCase } from 'src/backtesting/application/use-cases/import-binance-data.use-case';
+import { GetBacktestRunUseCase } from 'src/backtesting/application/use-cases/get-backtest-run.use-case';
 import { RunBacktestUseCase } from 'src/backtesting/application/use-cases/run-backtest.use-case';
+import { BacktestRunResponseDto } from '../dtos/backtest-run-response.dto';
 import { ImportBinanceDataRequestDto } from '../dtos/import-binance-data-request.dto';
 import { ImportBinanceDataResponseDto } from '../dtos/import-binance-data-response.dto';
 import { ImportJobStatusResponseDto } from '../dtos/import-job-status-response.dto';
@@ -33,6 +35,7 @@ export class BacktestingController {
     private readonly getImportJobStatusUseCase: GetImportJobStatusUseCase,
     private readonly getImportQueueOverviewUseCase: GetImportQueueOverviewUseCase,
     private readonly runBacktestUseCase: RunBacktestUseCase,
+    private readonly getBacktestRunUseCase: GetBacktestRunUseCase,
   ) {}
 
   @Post('import')
@@ -86,6 +89,20 @@ export class BacktestingController {
       throw new NotFoundException(`Import job not found: ${jobId}`);
     }
     return status;
+  }
+
+  @Get('run/:runId')
+  @ApiOperation({ summary: 'Get persisted backtest run by ID' })
+  @ApiOkResponse({ type: BacktestRunResponseDto })
+  @ApiNotFoundResponse({ description: 'Backtest run not found' })
+  public async getBacktestRun(
+    @Param('runId') runId: string,
+  ): Promise<BacktestRunResponseDto> {
+    const run = await this.getBacktestRunUseCase.execute(runId);
+    if (!run) {
+      throw new NotFoundException(`Backtest run not found: ${runId}`);
+    }
+    return run;
   }
 
   private isClientInputError(message: string): boolean {

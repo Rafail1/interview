@@ -1,6 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
-import { SaveBacktestRunInput } from 'src/backtesting/domain/interfaces/backtest-run-repository.interface';
+import { BacktestRun, BacktestTrade, Prisma } from '@prisma/client';
+import {
+  BacktestRunView,
+  BacktestTradeView,
+  SaveBacktestRunInput,
+} from 'src/backtesting/domain/interfaces/backtest-run-repository.interface';
 
 @Injectable()
 export class BacktestRunMapper {
@@ -37,6 +41,48 @@ export class BacktestRunMapper {
       pnlPercent: trade.getPnLPercent(),
       status: trade.getStatus(),
     }));
+  }
+
+  public toDomainRun(
+    run: BacktestRun & { trades: BacktestTrade[] },
+  ): BacktestRunView {
+    return {
+      id: run.id,
+      symbol: run.symbol,
+      interval: run.interval,
+      strategyVersion: run.strategyVersion,
+      config: run.config as Record<string, unknown>,
+      startTime: run.startTime.toString(),
+      endTime: run.endTime.toString(),
+      totalTrades: run.totalTrades,
+      winningTrades: run.winningTrades,
+      losingTrades: run.losingTrades,
+      winRate: run.winRate,
+      totalPnL: run.totalPnL,
+      maxDrawdown: run.maxDrawdown,
+      sharpeRatio: run.sharpeRatio,
+      profitFactor: run.profitFactor,
+      avgWin: run.avgWin,
+      avgLoss: run.avgLoss,
+      createdAt: run.createdAt,
+      trades: run.trades.map((trade) => this.toDomainTrade(trade)),
+    };
+  }
+
+  private toDomainTrade(trade: BacktestTrade): BacktestTradeView {
+    return {
+      id: trade.id,
+      entryTime: trade.entryTime.toString(),
+      exitTime: trade.exitTime?.toString() ?? null,
+      entryPrice: trade.entryPrice,
+      exitPrice: trade.exitPrice,
+      quantity: trade.quantity,
+      side: trade.side,
+      pnl: trade.pnl,
+      pnlPercent: trade.pnlPercent,
+      status: trade.status,
+      createdAt: trade.createdAt,
+    };
   }
 
   private toPrismaJson(value: Record<string, unknown>): Prisma.InputJsonValue {

@@ -20,6 +20,8 @@ export {
 } from './trade-simulator.interface';
 export {
   type IBacktestRunRepository,
+  type BacktestRunView,
+  type BacktestTradeView,
   type SaveBacktestRunInput,
   BACKTEST_RUN_REPOSITORY_TOKEN,
 } from './backtest-run-repository.interface';
