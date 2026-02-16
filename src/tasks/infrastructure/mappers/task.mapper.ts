@@ -1,32 +1,50 @@
 import { Injectable } from '@nestjs/common';
-import { TaskEntityOrm } from '../entities/task-orm.entity';
 import { Task } from 'src/tasks/domain/entities/task.entity';
 import { TaskStatus } from 'src/tasks/domain/value-objects/task-status.value-object';
 import { Priority } from 'src/tasks/domain/value-objects/priority.value-object';
 
+/**
+ * Maps between domain Task entity and persistence layer data.
+ * Maintains abstraction from ORM implementation to enable easy migration.
+ */
 @Injectable()
 export class TaskMapper {
-  public toDomain(ormEntity: TaskEntityOrm): Task {
+  /**
+   * Converts persistence layer record to domain entity
+   */
+  public toDomain(record: {
+    id: string;
+    title: string;
+    description: string | null;
+    status: string;
+    priority: string;
+  }): Task {
     const task = Task.create(
-      ormEntity.id,
-      ormEntity.title,
-      ormEntity.description,
-      TaskStatus.fromValue(ormEntity.status),
-      Priority.fromValue(ormEntity.priority),
+      record.id,
+      record.title,
+      record.description,
+      TaskStatus.fromValue(record.status),
+      Priority.fromValue(record.priority),
     );
 
     return task;
   }
 
-  public toOrmEntity(domainTask: Task): TaskEntityOrm {
-    const ormEntity = new TaskEntityOrm();
-
-    ormEntity.id = domainTask.getId();
-    ormEntity.title = domainTask.getTitle();
-    ormEntity.description = domainTask.getDescription() ?? null;
-    ormEntity.status = domainTask.getStatus().toString();
-    ormEntity.priority = domainTask.getPriority().toString();
-
-    return ormEntity;
+  /**
+   * Converts domain entity to persistence layer format
+   * Returns plain object compatible with any ORM (Prisma, TypeORM, Sequelize, etc.)
+   */
+  public toPersistence(domainTask: Task): {
+    title: string;
+    description: string | null;
+    status: string;
+    priority: string;
+  } {
+    return {
+      title: domainTask.getTitle(),
+      description: domainTask.getDescription() ?? null,
+      status: domainTask.getStatus().toString(),
+      priority: domainTask.getPriority().toString(),
+    };
   }
 }
