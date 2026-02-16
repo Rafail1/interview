@@ -8,6 +8,8 @@ type UseCaseMocks = {
   getQueueOverviewUseCaseMock: { execute: jest.Mock };
   runBacktestUseCaseMock: { execute: jest.Mock };
   getBacktestRunUseCaseMock: { execute: jest.Mock };
+  getBacktestRunSignalsUseCaseMock: { execute: jest.Mock };
+  getBacktestRunEquityUseCaseMock: { execute: jest.Mock };
   listBacktestRunsUseCaseMock: { execute: jest.Mock };
 };
 
@@ -18,6 +20,8 @@ function makeController(overrides?: Partial<UseCaseMocks>) {
     getQueueOverviewUseCaseMock: { execute: jest.fn() },
     runBacktestUseCaseMock: { execute: jest.fn() },
     getBacktestRunUseCaseMock: { execute: jest.fn() },
+    getBacktestRunSignalsUseCaseMock: { execute: jest.fn() },
+    getBacktestRunEquityUseCaseMock: { execute: jest.fn() },
     listBacktestRunsUseCaseMock: { execute: jest.fn() },
     ...overrides,
   };
@@ -28,6 +32,8 @@ function makeController(overrides?: Partial<UseCaseMocks>) {
     mocks.getQueueOverviewUseCaseMock as any,
     mocks.runBacktestUseCaseMock as any,
     mocks.getBacktestRunUseCaseMock as any,
+    mocks.getBacktestRunSignalsUseCaseMock as any,
+    mocks.getBacktestRunEquityUseCaseMock as any,
     mocks.listBacktestRunsUseCaseMock as any,
   );
 
@@ -260,6 +266,80 @@ describe('BacktestingController', () => {
     await expect(controller.getBacktestRun('missing-run')).rejects.toBeInstanceOf(
       NotFoundException,
     );
+  });
+
+  it('getBacktestRunSignals returns persisted signals when found', async () => {
+    const { controller, mocks } = makeController({
+      getBacktestRunSignalsUseCaseMock: {
+        execute: jest.fn().mockResolvedValue([
+          {
+            id: 'sig-1',
+            timestamp: '1704067200000',
+            signalType: 'BUY',
+            reason: 'fvg_bos_confluence',
+            price: '42250.10',
+            metadata: { foo: 'bar' },
+            createdAt: new Date('2024-02-01T00:00:00.000Z'),
+          },
+        ]),
+      },
+    });
+
+    const result = await controller.getBacktestRunSignals('run-1');
+
+    expect(mocks.getBacktestRunSignalsUseCaseMock.execute).toHaveBeenCalledWith(
+      'run-1',
+    );
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]).toHaveProperty('signalType', 'BUY');
+  });
+
+  it('getBacktestRunSignals throws NotFoundException when run missing', async () => {
+    const { controller } = makeController({
+      getBacktestRunSignalsUseCaseMock: {
+        execute: jest.fn().mockResolvedValue(null),
+      },
+    });
+
+    await expect(
+      controller.getBacktestRunSignals('missing-run'),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('getBacktestRunEquity returns persisted equity points when found', async () => {
+    const { controller, mocks } = makeController({
+      getBacktestRunEquityUseCaseMock: {
+        execute: jest.fn().mockResolvedValue([
+          {
+            id: 'eq-1',
+            timestamp: '1704067200000',
+            equity: '10000',
+            drawdown: '0',
+            createdAt: new Date('2024-02-01T00:00:00.000Z'),
+          },
+        ]),
+      },
+    });
+
+    const result = await controller.getBacktestRunEquity('run-1');
+
+    expect(mocks.getBacktestRunEquityUseCaseMock.execute).toHaveBeenCalledWith(
+      'run-1',
+    );
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]).toHaveProperty('equity', '10000');
+  });
+
+  it('getBacktestRunEquity throws NotFoundException when run missing', async () => {
+    const { controller } = makeController({
+      getBacktestRunEquityUseCaseMock: {
+        execute: jest.fn().mockResolvedValue(null),
+      },
+    });
+
+    await expect(
+      controller.getBacktestRunEquity('missing-run'),
+    ).rejects.toBeInstanceOf(NotFoundException);
   });
 
   it('listBacktestRuns delegates filters and pagination to use-case', async () => {

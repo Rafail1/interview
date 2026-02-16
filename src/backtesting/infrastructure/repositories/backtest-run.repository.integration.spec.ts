@@ -79,6 +79,22 @@ maybeDescribe('BacktestRunRepository integration', () => {
         avgLoss: '0',
       },
       trades: [tradeA, tradeB],
+      signals: [
+        {
+          timestampMs: 1704067200000n,
+          signalType: 'BUY',
+          reason: 'test_buy',
+          price: '42250.10',
+          metadata: { source: 'integration' },
+        },
+      ],
+      equityPoints: [
+        {
+          timestampMs: 1704067200000n,
+          equity: '10000',
+          drawdown: '0',
+        },
+      ],
     });
     createdRunIds.push(runId);
 
@@ -99,6 +115,13 @@ maybeDescribe('BacktestRunRepository integration', () => {
     expect(run?.trades[0]).toHaveProperty('entryTime', '1704067200000');
     expect(run?.trades[1]).toHaveProperty('entryTime', '1704067260000');
     expect(run?.trades[0]).toHaveProperty('status', 'closed');
+
+    await expect(
+      prisma.signalEvent.count({ where: { backtestRunId: runId } }),
+    ).resolves.toBe(1);
+    await expect(
+      prisma.equityPoint.count({ where: { backtestRunId: runId } }),
+    ).resolves.toBe(1);
   });
 
   it('returns null when run does not exist', async () => {

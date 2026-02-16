@@ -19,9 +19,13 @@ import { GetImportJobStatusUseCase } from 'src/backtesting/application/use-cases
 import { GetImportQueueOverviewUseCase } from 'src/backtesting/application/use-cases/get-import-queue-overview.use-case';
 import { ImportBinanceDataUseCase } from 'src/backtesting/application/use-cases/import-binance-data.use-case';
 import { GetBacktestRunUseCase } from 'src/backtesting/application/use-cases/get-backtest-run.use-case';
+import { GetBacktestRunSignalsUseCase } from 'src/backtesting/application/use-cases/get-backtest-run-signals.use-case';
+import { GetBacktestRunEquityUseCase } from 'src/backtesting/application/use-cases/get-backtest-run-equity.use-case';
 import { ListBacktestRunsUseCase } from 'src/backtesting/application/use-cases/list-backtest-runs.use-case';
 import { RunBacktestUseCase } from 'src/backtesting/application/use-cases/run-backtest.use-case';
+import { BacktestRunEquityResponseDto } from '../dtos/backtest-run-equity-response.dto';
 import { BacktestRunResponseDto } from '../dtos/backtest-run-response.dto';
+import { BacktestRunSignalsResponseDto } from '../dtos/backtest-run-signals-response.dto';
 import { ImportBinanceDataRequestDto } from '../dtos/import-binance-data-request.dto';
 import { ImportBinanceDataResponseDto } from '../dtos/import-binance-data-response.dto';
 import { ImportJobStatusResponseDto } from '../dtos/import-job-status-response.dto';
@@ -40,6 +44,8 @@ export class BacktestingController {
     private readonly getImportQueueOverviewUseCase: GetImportQueueOverviewUseCase,
     private readonly runBacktestUseCase: RunBacktestUseCase,
     private readonly getBacktestRunUseCase: GetBacktestRunUseCase,
+    private readonly getBacktestRunSignalsUseCase: GetBacktestRunSignalsUseCase,
+    private readonly getBacktestRunEquityUseCase: GetBacktestRunEquityUseCase,
     private readonly listBacktestRunsUseCase: ListBacktestRunsUseCase,
   ) {}
 
@@ -124,6 +130,38 @@ export class BacktestingController {
       throw new NotFoundException(`Backtest run not found: ${runId}`);
     }
     return run;
+  }
+
+  @Get('run/:runId/signals')
+  @ApiOperation({ summary: 'Get persisted signal events for a backtest run' })
+  @ApiOkResponse({ type: BacktestRunSignalsResponseDto })
+  @ApiNotFoundResponse({ description: 'Backtest run not found' })
+  public async getBacktestRunSignals(
+    @Param('runId') runId: string,
+  ): Promise<BacktestRunSignalsResponseDto> {
+    const signals = await this.getBacktestRunSignalsUseCase.execute(runId);
+    if (!signals) {
+      throw new NotFoundException(`Backtest run not found: ${runId}`);
+    }
+
+    return { items: signals };
+  }
+
+  @Get('run/:runId/equity')
+  @ApiOperation({
+    summary: 'Get persisted equity curve points for a backtest run',
+  })
+  @ApiOkResponse({ type: BacktestRunEquityResponseDto })
+  @ApiNotFoundResponse({ description: 'Backtest run not found' })
+  public async getBacktestRunEquity(
+    @Param('runId') runId: string,
+  ): Promise<BacktestRunEquityResponseDto> {
+    const equityPoints = await this.getBacktestRunEquityUseCase.execute(runId);
+    if (!equityPoints) {
+      throw new NotFoundException(`Backtest run not found: ${runId}`);
+    }
+
+    return { items: equityPoints };
   }
 
   private isClientInputError(message: string): boolean {

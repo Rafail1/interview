@@ -5,6 +5,8 @@ import { GetImportJobStatusUseCase } from '../src/backtesting/application/use-ca
 import { GetImportQueueOverviewUseCase } from '../src/backtesting/application/use-cases/get-import-queue-overview.use-case';
 import { ImportBinanceDataUseCase } from '../src/backtesting/application/use-cases/import-binance-data.use-case';
 import { GetBacktestRunUseCase } from '../src/backtesting/application/use-cases/get-backtest-run.use-case';
+import { GetBacktestRunSignalsUseCase } from '../src/backtesting/application/use-cases/get-backtest-run-signals.use-case';
+import { GetBacktestRunEquityUseCase } from '../src/backtesting/application/use-cases/get-backtest-run-equity.use-case';
 import { ListBacktestRunsUseCase } from '../src/backtesting/application/use-cases/list-backtest-runs.use-case';
 import { RunBacktestUseCase } from '../src/backtesting/application/use-cases/run-backtest.use-case';
 import { BacktestingController } from '../src/backtesting/interfaces/http/backtesting.controller';
@@ -29,6 +31,14 @@ describe('Backtesting (e2e)', () => {
   };
 
   const getBacktestRunUseCaseMock = {
+    execute: jest.fn(),
+  };
+
+  const getBacktestRunSignalsUseCaseMock = {
+    execute: jest.fn(),
+  };
+
+  const getBacktestRunEquityUseCaseMock = {
     execute: jest.fn(),
   };
 
@@ -59,6 +69,14 @@ describe('Backtesting (e2e)', () => {
         {
           provide: GetBacktestRunUseCase,
           useValue: getBacktestRunUseCaseMock,
+        },
+        {
+          provide: GetBacktestRunSignalsUseCase,
+          useValue: getBacktestRunSignalsUseCaseMock,
+        },
+        {
+          provide: GetBacktestRunEquityUseCase,
+          useValue: getBacktestRunEquityUseCaseMock,
         },
         {
           provide: ListBacktestRunsUseCase,
@@ -375,6 +393,66 @@ describe('Backtesting (e2e)', () => {
 
     await request(app.getHttpServer())
       .get('/backtesting/run/missing-run')
+      .expect(404);
+  });
+
+  it('GET /backtesting/run/:runId/signals returns persisted signal events', async () => {
+    getBacktestRunSignalsUseCaseMock.execute.mockResolvedValue([
+      {
+        id: 'sig-e2e-1',
+        timestamp: '1704067200000',
+        signalType: 'BUY',
+        reason: 'fvg_bos_confluence',
+        price: '42250.10',
+        metadata: { source: 'e2e' },
+        createdAt: '2024-02-01T00:00:00.000Z',
+      },
+    ]);
+
+    const res = await request(app.getHttpServer())
+      .get('/backtesting/run/run-e2e-1/signals')
+      .expect(200);
+
+    expect(getBacktestRunSignalsUseCaseMock.execute).toHaveBeenCalledWith(
+      'run-e2e-1',
+    );
+    expect(res.body.items[0]).toHaveProperty('id', 'sig-e2e-1');
+  });
+
+  it('GET /backtesting/run/:runId/signals returns 404 when run not found', async () => {
+    getBacktestRunSignalsUseCaseMock.execute.mockResolvedValueOnce(null);
+
+    await request(app.getHttpServer())
+      .get('/backtesting/run/missing-run/signals')
+      .expect(404);
+  });
+
+  it('GET /backtesting/run/:runId/equity returns persisted equity points', async () => {
+    getBacktestRunEquityUseCaseMock.execute.mockResolvedValue([
+      {
+        id: 'eq-e2e-1',
+        timestamp: '1704067200000',
+        equity: '10000',
+        drawdown: '0',
+        createdAt: '2024-02-01T00:00:00.000Z',
+      },
+    ]);
+
+    const res = await request(app.getHttpServer())
+      .get('/backtesting/run/run-e2e-1/equity')
+      .expect(200);
+
+    expect(getBacktestRunEquityUseCaseMock.execute).toHaveBeenCalledWith(
+      'run-e2e-1',
+    );
+    expect(res.body.items[0]).toHaveProperty('id', 'eq-e2e-1');
+  });
+
+  it('GET /backtesting/run/:runId/equity returns 404 when run not found', async () => {
+    getBacktestRunEquityUseCaseMock.execute.mockResolvedValueOnce(null);
+
+    await request(app.getHttpServer())
+      .get('/backtesting/run/missing-run/equity')
       .expect(404);
   });
 

@@ -1,4 +1,5 @@
 import { Trade } from '../entities/trade.entity';
+import { SignalType } from '../entities/signal.entity';
 
 export type SaveBacktestRunInput = {
   symbol: string;
@@ -20,6 +21,18 @@ export type SaveBacktestRunInput = {
     avgLoss: string;
   };
   trades: Trade[];
+  signals?: Array<{
+    timestampMs: bigint;
+    signalType: SignalType;
+    reason: string;
+    price: string;
+    metadata?: Record<string, unknown>;
+  }>;
+  equityPoints?: Array<{
+    timestampMs: bigint;
+    equity: string;
+    drawdown: string;
+  }>;
 };
 
 export type BacktestTradeView = {
@@ -89,10 +102,30 @@ export type BacktestRunListView = {
   total: number;
 };
 
+export type BacktestSignalEventView = {
+  id: string;
+  timestamp: string;
+  signalType: SignalType;
+  reason: string;
+  price: string;
+  metadata: Record<string, unknown> | null;
+  createdAt: Date;
+};
+
+export type BacktestEquityPointView = {
+  id: string;
+  timestamp: string;
+  equity: string;
+  drawdown: string;
+  createdAt: Date;
+};
+
 export interface IBacktestRunRepository {
   saveRun(input: SaveBacktestRunInput): Promise<string>;
   findById(runId: string): Promise<BacktestRunView | null>;
   listRuns(input: ListBacktestRunsInput): Promise<BacktestRunListView>;
+  findSignalsByRunId(runId: string): Promise<BacktestSignalEventView[] | null>;
+  findEquityByRunId(runId: string): Promise<BacktestEquityPointView[] | null>;
 }
 
 export const BACKTEST_RUN_REPOSITORY_TOKEN = Symbol('IBacktestRunRepository');

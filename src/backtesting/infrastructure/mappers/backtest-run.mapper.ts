@@ -1,7 +1,15 @@
 import { Injectable } from '@nestjs/common';
-import { BacktestRun, BacktestTrade, Prisma } from '@prisma/client';
 import {
+  BacktestRun,
+  BacktestTrade,
+  EquityPoint,
+  Prisma,
+  SignalEvent,
+} from '@prisma/client';
+import {
+  BacktestEquityPointView,
   BacktestRunListItemView,
+  BacktestSignalEventView,
   BacktestRunView,
   BacktestTradeView,
   SaveBacktestRunInput,
@@ -44,6 +52,26 @@ export class BacktestRunMapper {
     }));
   }
 
+  public toPersistenceSignals(input: SaveBacktestRunInput) {
+    return (input.signals ?? []).map((signal) => ({
+      timestamp: signal.timestampMs,
+      signalType: signal.signalType,
+      reason: signal.reason,
+      price: signal.price,
+      ...(signal.metadata
+        ? { metadata: this.toPrismaJson(signal.metadata) }
+        : {}),
+    }));
+  }
+
+  public toPersistenceEquityPoints(input: SaveBacktestRunInput) {
+    return (input.equityPoints ?? []).map((point) => ({
+      timestamp: point.timestampMs,
+      equity: point.equity,
+      drawdown: point.drawdown,
+    }));
+  }
+
   public toDomainRun(
     run: BacktestRun & { trades: BacktestTrade[] },
   ): BacktestRunView {
@@ -82,6 +110,28 @@ export class BacktestRunMapper {
       winRate: run.winRate,
       totalPnL: run.totalPnL,
       createdAt: run.createdAt,
+    };
+  }
+
+  public toDomainSignalEvent(signal: SignalEvent): BacktestSignalEventView {
+    return {
+      id: signal.id,
+      timestamp: signal.timestamp.toString(),
+      signalType: signal.signalType as BacktestSignalEventView['signalType'],
+      reason: signal.reason,
+      price: signal.price,
+      metadata: (signal.metadata as Record<string, unknown> | null) ?? null,
+      createdAt: signal.createdAt,
+    };
+  }
+
+  public toDomainEquityPoint(point: EquityPoint): BacktestEquityPointView {
+    return {
+      id: point.id,
+      timestamp: point.timestamp.toString(),
+      equity: point.equity,
+      drawdown: point.drawdown,
+      createdAt: point.createdAt,
     };
   }
 

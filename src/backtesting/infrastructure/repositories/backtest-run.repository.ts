@@ -16,12 +16,30 @@ export class BacktestRunRepository implements IBacktestRunRepository {
   ) {}
 
   public async saveRun(input: SaveBacktestRunInput): Promise<string> {
+    const signals = this.backtestRunMapper.toPersistenceSignals(input);
+    const equityPoints =
+      this.backtestRunMapper.toPersistenceEquityPoints(input);
+
     const run = await this.prisma.backtestRun.create({
       data: {
         ...this.backtestRunMapper.toPersistenceRun(input),
         trades: {
           create: this.backtestRunMapper.toPersistenceTrades(input),
         },
+        ...(signals.length > 0
+          ? {
+              signals: {
+                create: signals,
+              },
+            }
+          : {}),
+        ...(equityPoints.length > 0
+          ? {
+              equityPoints: {
+                create: equityPoints,
+              },
+            }
+          : {}),
       },
       select: { id: true },
     });
@@ -161,5 +179,49 @@ export class BacktestRunRepository implements IBacktestRunRepository {
       limit: input.limit,
       total,
     };
+  }
+
+  public async findSignalsByRunId(runId: string) {
+    const run = await this.prisma.backtestRun.findUnique({
+      where: { id: runId },
+      select: {
+        id: true,
+        signals: {
+          orderBy: {
+            timestamp: 'asc',
+          },
+        },
+      },
+    });
+
+    if (!run) {
+      return null;
+    }
+
+    return run.signals.map((signal) =>
+      this.backtestRunMapper.toDomainSignalEvent(signal),
+    );
+  }
+
+  public async findEquityByRunId(runId: string) {
+    const run = await this.prisma.backtestRun.findUnique({
+      where: { id: runId },
+      select: {
+        id: true,
+        equityPoints: {
+          orderBy: {
+            timestamp: 'asc',
+          },
+        },
+      },
+    });
+
+    if (!run) {
+      return null;
+    }
+
+    return run.equityPoints.map((point) =>
+      this.backtestRunMapper.toDomainEquityPoint(point),
+    );
   }
 }

@@ -109,6 +109,22 @@ describe('RunBacktestUseCase', () => {
         symbol: 'BTCUSDT',
         interval: '15m',
         strategyVersion: 'fvg-bos-v1',
+        signals: [
+          expect.objectContaining({
+            signalType: 'BUY',
+            reason: 'test_buy',
+            price: '100',
+          }),
+        ],
+      }),
+    );
+    const persistedRunPayload =
+      backtestRunRepositoryMock.saveRun.mock.calls[0][0];
+    expect(persistedRunPayload.equityPoints).toHaveLength(1);
+    expect(persistedRunPayload.equityPoints[0]).toEqual(
+      expect.objectContaining({
+        equity: '10000',
+        drawdown: '0',
       }),
     );
     expect(result).toHaveProperty('runId', 'run-1');
