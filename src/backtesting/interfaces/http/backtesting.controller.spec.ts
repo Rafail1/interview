@@ -271,24 +271,31 @@ describe('BacktestingController', () => {
   it('getBacktestRunSignals returns persisted signals when found', async () => {
     const { controller, mocks } = makeController({
       getBacktestRunSignalsUseCaseMock: {
-        execute: jest.fn().mockResolvedValue([
-          {
-            id: 'sig-1',
-            timestamp: '1704067200000',
-            signalType: 'BUY',
-            reason: 'fvg_bos_confluence',
-            price: '42250.10',
-            metadata: { foo: 'bar' },
-            createdAt: new Date('2024-02-01T00:00:00.000Z'),
-          },
-        ]),
+        execute: jest.fn().mockResolvedValue({
+          items: [
+            {
+              id: 'sig-1',
+              timestamp: '1704067200000',
+              signalType: 'BUY',
+              reason: 'fvg_bos_confluence',
+              price: '42250.10',
+              metadata: { foo: 'bar' },
+              createdAt: new Date('2024-02-01T00:00:00.000Z'),
+            },
+          ],
+          page: 1,
+          limit: 100,
+          total: 1,
+        }),
       },
     });
 
-    const result = await controller.getBacktestRunSignals('run-1');
+    const query = { page: 1, limit: 100 };
+    const result = await controller.getBacktestRunSignals('run-1', query);
 
     expect(mocks.getBacktestRunSignalsUseCaseMock.execute).toHaveBeenCalledWith(
       'run-1',
+      query,
     );
     expect(result.items).toHaveLength(1);
     expect(result.items[0]).toHaveProperty('signalType', 'BUY');
@@ -302,29 +309,36 @@ describe('BacktestingController', () => {
     });
 
     await expect(
-      controller.getBacktestRunSignals('missing-run'),
+      controller.getBacktestRunSignals('missing-run', {}),
     ).rejects.toBeInstanceOf(NotFoundException);
   });
 
   it('getBacktestRunEquity returns persisted equity points when found', async () => {
     const { controller, mocks } = makeController({
       getBacktestRunEquityUseCaseMock: {
-        execute: jest.fn().mockResolvedValue([
-          {
-            id: 'eq-1',
-            timestamp: '1704067200000',
-            equity: '10000',
-            drawdown: '0',
-            createdAt: new Date('2024-02-01T00:00:00.000Z'),
-          },
-        ]),
+        execute: jest.fn().mockResolvedValue({
+          items: [
+            {
+              id: 'eq-1',
+              timestamp: '1704067200000',
+              equity: '10000',
+              drawdown: '0',
+              createdAt: new Date('2024-02-01T00:00:00.000Z'),
+            },
+          ],
+          page: 1,
+          limit: 100,
+          total: 1,
+        }),
       },
     });
 
-    const result = await controller.getBacktestRunEquity('run-1');
+    const query = { page: 1, limit: 100 };
+    const result = await controller.getBacktestRunEquity('run-1', query);
 
     expect(mocks.getBacktestRunEquityUseCaseMock.execute).toHaveBeenCalledWith(
       'run-1',
+      query,
     );
     expect(result.items).toHaveLength(1);
     expect(result.items[0]).toHaveProperty('equity', '10000');
@@ -338,8 +352,34 @@ describe('BacktestingController', () => {
     });
 
     await expect(
-      controller.getBacktestRunEquity('missing-run'),
+      controller.getBacktestRunEquity('missing-run', {}),
     ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('series endpoints map fromTs/toTs semantic validation to BadRequestException', async () => {
+    const error = new Error('fromTs must be before or equal to toTs');
+    const { controller } = makeController({
+      getBacktestRunSignalsUseCaseMock: {
+        execute: jest.fn().mockRejectedValue(error),
+      },
+      getBacktestRunEquityUseCaseMock: {
+        execute: jest.fn().mockRejectedValue(error),
+      },
+    });
+
+    await expect(
+      controller.getBacktestRunSignals('run-1', {
+        fromTs: '200',
+        toTs: '100',
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+
+    await expect(
+      controller.getBacktestRunEquity('run-1', {
+        fromTs: '200',
+        toTs: '100',
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it('listBacktestRuns delegates filters and pagination to use-case', async () => {

@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import {
+  GetBacktestRunSeriesInput,
   IBacktestRunRepository,
   ListBacktestRunsInput,
   SaveBacktestRunInput,
@@ -181,47 +182,89 @@ export class BacktestRunRepository implements IBacktestRunRepository {
     };
   }
 
-  public async findSignalsByRunId(runId: string) {
+  public async findSignalsByRunId(input: GetBacktestRunSeriesInput) {
     const run = await this.prisma.backtestRun.findUnique({
-      where: { id: runId },
-      select: {
-        id: true,
-        signals: {
-          orderBy: {
-            timestamp: 'asc',
-          },
-        },
-      },
+      where: { id: input.runId },
+      select: { id: true },
     });
 
     if (!run) {
       return null;
     }
 
-    return run.signals.map((signal) =>
-      this.backtestRunMapper.toDomainSignalEvent(signal),
-    );
+    const where = {
+      backtestRunId: input.runId,
+      ...(input.fromTs !== undefined || input.toTs !== undefined
+        ? {
+            timestamp: {
+              ...(input.fromTs !== undefined ? { gte: input.fromTs } : {}),
+              ...(input.toTs !== undefined ? { lte: input.toTs } : {}),
+            },
+          }
+        : {}),
+    };
+    const skip = (input.page - 1) * input.limit;
+
+    const [total, rows] = await this.prisma.$transaction([
+      this.prisma.signalEvent.count({ where }),
+      this.prisma.signalEvent.findMany({
+        where,
+        orderBy: { timestamp: 'asc' },
+        skip,
+        take: input.limit,
+      }),
+    ]);
+
+    return {
+      items: rows.map((signal) =>
+        this.backtestRunMapper.toDomainSignalEvent(signal),
+      ),
+      page: input.page,
+      limit: input.limit,
+      total,
+    };
   }
 
-  public async findEquityByRunId(runId: string) {
+  public async findEquityByRunId(input: GetBacktestRunSeriesInput) {
     const run = await this.prisma.backtestRun.findUnique({
-      where: { id: runId },
-      select: {
-        id: true,
-        equityPoints: {
-          orderBy: {
-            timestamp: 'asc',
-          },
-        },
-      },
+      where: { id: input.runId },
+      select: { id: true },
     });
 
     if (!run) {
       return null;
     }
 
-    return run.equityPoints.map((point) =>
-      this.backtestRunMapper.toDomainEquityPoint(point),
-    );
+    const where = {
+      backtestRunId: input.runId,
+      ...(input.fromTs !== undefined || input.toTs !== undefined
+        ? {
+            timestamp: {
+              ...(input.fromTs !== undefined ? { gte: input.fromTs } : {}),
+              ...(input.toTs !== undefined ? { lte: input.toTs } : {}),
+            },
+          }
+        : {}),
+    };
+    const skip = (input.page - 1) * input.limit;
+
+    const [total, rows] = await this.prisma.$transaction([
+      this.prisma.equityPoint.count({ where }),
+      this.prisma.equityPoint.findMany({
+        where,
+        orderBy: { timestamp: 'asc' },
+        skip,
+        take: input.limit,
+      }),
+    ]);
+
+    return {
+      items: rows.map((point) =>
+        this.backtestRunMapper.toDomainEquityPoint(point),
+      ),
+      page: input.page,
+      limit: input.limit,
+      total,
+    };
   }
 }

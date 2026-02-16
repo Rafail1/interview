@@ -120,12 +120,38 @@ export type BacktestEquityPointView = {
   createdAt: Date;
 };
 
+export type GetBacktestRunSeriesInput = {
+  runId: string;
+  page: number;
+  limit: number;
+  fromTs?: bigint;
+  toTs?: bigint;
+};
+
+export type BacktestSignalEventListView = {
+  items: BacktestSignalEventView[];
+  page: number;
+  limit: number;
+  total: number;
+};
+
+export type BacktestEquityPointListView = {
+  items: BacktestEquityPointView[];
+  page: number;
+  limit: number;
+  total: number;
+};
+
 export interface IBacktestRunRepository {
   saveRun(input: SaveBacktestRunInput): Promise<string>;
   findById(runId: string): Promise<BacktestRunView | null>;
   listRuns(input: ListBacktestRunsInput): Promise<BacktestRunListView>;
-  findSignalsByRunId(runId: string): Promise<BacktestSignalEventView[] | null>;
-  findEquityByRunId(runId: string): Promise<BacktestEquityPointView[] | null>;
+  findSignalsByRunId(
+    input: GetBacktestRunSeriesInput,
+  ): Promise<BacktestSignalEventListView | null>;
+  findEquityByRunId(
+    input: GetBacktestRunSeriesInput,
+  ): Promise<BacktestEquityPointListView | null>;
 }
 
 export const BACKTEST_RUN_REPOSITORY_TOKEN = Symbol('IBacktestRunRepository');

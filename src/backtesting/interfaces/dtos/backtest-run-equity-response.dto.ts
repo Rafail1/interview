@@ -20,4 +20,13 @@ class BacktestEquityPointDto {
 export class BacktestRunEquityResponseDto {
   @ApiProperty({ type: [BacktestEquityPointDto] })
   readonly items: BacktestEquityPointDto[];
+
+  @ApiProperty()
+  readonly page: number;
+
+  @ApiProperty()
+  readonly limit: number;
+
+  @ApiProperty()
+  readonly total: number;
 }

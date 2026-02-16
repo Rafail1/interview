@@ -26,4 +26,13 @@ class BacktestSignalEventDto {
 export class BacktestRunSignalsResponseDto {
   @ApiProperty({ type: [BacktestSignalEventDto] })
   readonly items: BacktestSignalEventDto[];
+
+  @ApiProperty()
+  readonly page: number;
+
+  @ApiProperty()
+  readonly limit: number;
+
+  @ApiProperty()
+  readonly total: number;
 }

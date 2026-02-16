@@ -397,26 +397,34 @@ describe('Backtesting (e2e)', () => {
   });
 
   it('GET /backtesting/run/:runId/signals returns persisted signal events', async () => {
-    getBacktestRunSignalsUseCaseMock.execute.mockResolvedValue([
-      {
-        id: 'sig-e2e-1',
-        timestamp: '1704067200000',
-        signalType: 'BUY',
-        reason: 'fvg_bos_confluence',
-        price: '42250.10',
-        metadata: { source: 'e2e' },
-        createdAt: '2024-02-01T00:00:00.000Z',
-      },
-    ]);
+    getBacktestRunSignalsUseCaseMock.execute.mockResolvedValue({
+      items: [
+        {
+          id: 'sig-e2e-1',
+          timestamp: '1704067200000',
+          signalType: 'BUY',
+          reason: 'fvg_bos_confluence',
+          price: '42250.10',
+          metadata: { source: 'e2e' },
+          createdAt: '2024-02-01T00:00:00.000Z',
+        },
+      ],
+      page: 2,
+      limit: 1,
+      total: 3,
+    });
 
     const res = await request(app.getHttpServer())
-      .get('/backtesting/run/run-e2e-1/signals')
+      .get('/backtesting/run/run-e2e-1/signals?page=2&limit=1')
       .expect(200);
 
     expect(getBacktestRunSignalsUseCaseMock.execute).toHaveBeenCalledWith(
       'run-e2e-1',
+      { page: 2, limit: 1 },
     );
     expect(res.body.items[0]).toHaveProperty('id', 'sig-e2e-1');
+    expect(res.body).toHaveProperty('page', 2);
+    expect(res.body).toHaveProperty('total', 3);
   });
 
   it('GET /backtesting/run/:runId/signals returns 404 when run not found', async () => {
@@ -428,24 +436,31 @@ describe('Backtesting (e2e)', () => {
   });
 
   it('GET /backtesting/run/:runId/equity returns persisted equity points', async () => {
-    getBacktestRunEquityUseCaseMock.execute.mockResolvedValue([
-      {
-        id: 'eq-e2e-1',
-        timestamp: '1704067200000',
-        equity: '10000',
-        drawdown: '0',
-        createdAt: '2024-02-01T00:00:00.000Z',
-      },
-    ]);
+    getBacktestRunEquityUseCaseMock.execute.mockResolvedValue({
+      items: [
+        {
+          id: 'eq-e2e-1',
+          timestamp: '1704067200000',
+          equity: '10000',
+          drawdown: '0',
+          createdAt: '2024-02-01T00:00:00.000Z',
+        },
+      ],
+      page: 1,
+      limit: 100,
+      total: 1,
+    });
 
     const res = await request(app.getHttpServer())
-      .get('/backtesting/run/run-e2e-1/equity')
+      .get('/backtesting/run/run-e2e-1/equity?fromTs=1704067200000&toTs=1704067319999')
       .expect(200);
 
     expect(getBacktestRunEquityUseCaseMock.execute).toHaveBeenCalledWith(
       'run-e2e-1',
+      { fromTs: '1704067200000', toTs: '1704067319999' },
     );
     expect(res.body.items[0]).toHaveProperty('id', 'eq-e2e-1');
+    expect(res.body).toHaveProperty('total', 1);
   });
 
   it('GET /backtesting/run/:runId/equity returns 404 when run not found', async () => {
@@ -454,6 +469,24 @@ describe('Backtesting (e2e)', () => {
     await request(app.getHttpServer())
       .get('/backtesting/run/missing-run/equity')
       .expect(404);
+  });
+
+  it('GET /backtesting/run/:runId/signals returns 400 for invalid pagination', async () => {
+    await request(app.getHttpServer())
+      .get('/backtesting/run/run-e2e-1/signals?page=0')
+      .expect(400);
+
+    expect(getBacktestRunSignalsUseCaseMock.execute).not.toHaveBeenCalled();
+  });
+
+  it('GET /backtesting/run/:runId/equity returns 400 when fromTs > toTs', async () => {
+    getBacktestRunEquityUseCaseMock.execute.mockRejectedValueOnce(
+      new Error('fromTs must be before or equal to toTs'),
+    );
+
+    await request(app.getHttpServer())
+      .get('/backtesting/run/run-e2e-1/equity?fromTs=200&toTs=100')
+      .expect(400);
   });
 
   it('GET /backtesting/runs returns paginated run list', async () => {

@@ -265,11 +265,16 @@ maybeDescribe('BacktestRunRepository integration', () => {
     });
     createdRunIds.push(runId);
 
-    const signals = await repository.findSignalsByRunId(runId);
+    const signals = await repository.findSignalsByRunId({
+      runId,
+      page: 1,
+      limit: 10,
+    });
 
     expect(signals).not.toBeNull();
-    expect(signals).toHaveLength(2);
-    expect(signals?.[0]).toEqual(
+    expect(signals).toHaveProperty('total', 2);
+    expect(signals?.items).toHaveLength(2);
+    expect(signals?.items[0]).toEqual(
       expect.objectContaining({
         timestamp: '1704067200000',
         signalType: 'BUY',
@@ -277,7 +282,7 @@ maybeDescribe('BacktestRunRepository integration', () => {
         price: '42250.10',
       }),
     );
-    expect(signals?.[1]).toEqual(
+    expect(signals?.items[1]).toEqual(
       expect.objectContaining({
         timestamp: '1704067260000',
         signalType: 'SELL',
@@ -285,7 +290,7 @@ maybeDescribe('BacktestRunRepository integration', () => {
         price: '42280.50',
       }),
     );
-    expect(signals?.[0].metadata).toEqual({ order: 1 });
+    expect(signals?.items[0].metadata).toEqual({ order: 1 });
   });
 
   it('reads equity points by run id in ascending timestamp order', async () => {
@@ -324,18 +329,23 @@ maybeDescribe('BacktestRunRepository integration', () => {
     });
     createdRunIds.push(runId);
 
-    const equityPoints = await repository.findEquityByRunId(runId);
+    const equityPoints = await repository.findEquityByRunId({
+      runId,
+      page: 1,
+      limit: 10,
+    });
 
     expect(equityPoints).not.toBeNull();
-    expect(equityPoints).toHaveLength(2);
-    expect(equityPoints?.[0]).toEqual(
+    expect(equityPoints).toHaveProperty('total', 2);
+    expect(equityPoints?.items).toHaveLength(2);
+    expect(equityPoints?.items[0]).toEqual(
       expect.objectContaining({
         timestamp: '1704067200000',
         equity: '10000',
         drawdown: '0',
       }),
     );
-    expect(equityPoints?.[1]).toEqual(
+    expect(equityPoints?.items[1]).toEqual(
       expect.objectContaining({
         timestamp: '1704067260000',
         equity: '10025.50',

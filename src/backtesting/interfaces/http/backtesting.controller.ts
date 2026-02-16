@@ -25,6 +25,7 @@ import { ListBacktestRunsUseCase } from 'src/backtesting/application/use-cases/l
 import { RunBacktestUseCase } from 'src/backtesting/application/use-cases/run-backtest.use-case';
 import { BacktestRunEquityResponseDto } from '../dtos/backtest-run-equity-response.dto';
 import { BacktestRunResponseDto } from '../dtos/backtest-run-response.dto';
+import { BacktestRunSeriesQueryDto } from '../dtos/backtest-run-series-query.dto';
 import { BacktestRunSignalsResponseDto } from '../dtos/backtest-run-signals-response.dto';
 import { ImportBinanceDataRequestDto } from '../dtos/import-binance-data-request.dto';
 import { ImportBinanceDataResponseDto } from '../dtos/import-binance-data-response.dto';
@@ -138,13 +139,23 @@ export class BacktestingController {
   @ApiNotFoundResponse({ description: 'Backtest run not found' })
   public async getBacktestRunSignals(
     @Param('runId') runId: string,
+    @Query() query: BacktestRunSeriesQueryDto,
   ): Promise<BacktestRunSignalsResponseDto> {
-    const signals = await this.getBacktestRunSignalsUseCase.execute(runId);
-    if (!signals) {
-      throw new NotFoundException(`Backtest run not found: ${runId}`);
+    try {
+      const signals = await this.getBacktestRunSignalsUseCase.execute(
+        runId,
+        query,
+      );
+      if (!signals) {
+        throw new NotFoundException(`Backtest run not found: ${runId}`);
+      }
+      return signals;
+    } catch (error) {
+      if (error instanceof Error && this.isClientInputError(error.message)) {
+        throw new BadRequestException(error.message);
+      }
+      throw error;
     }
-
-    return { items: signals };
   }
 
   @Get('run/:runId/equity')
@@ -155,19 +166,30 @@ export class BacktestingController {
   @ApiNotFoundResponse({ description: 'Backtest run not found' })
   public async getBacktestRunEquity(
     @Param('runId') runId: string,
+    @Query() query: BacktestRunSeriesQueryDto,
   ): Promise<BacktestRunEquityResponseDto> {
-    const equityPoints = await this.getBacktestRunEquityUseCase.execute(runId);
-    if (!equityPoints) {
-      throw new NotFoundException(`Backtest run not found: ${runId}`);
+    try {
+      const equityPoints = await this.getBacktestRunEquityUseCase.execute(
+        runId,
+        query,
+      );
+      if (!equityPoints) {
+        throw new NotFoundException(`Backtest run not found: ${runId}`);
+      }
+      return equityPoints;
+    } catch (error) {
+      if (error instanceof Error && this.isClientInputError(error.message)) {
+        throw new BadRequestException(error.message);
+      }
+      throw error;
     }
-
-    return { items: equityPoints };
   }
 
   private isClientInputError(message: string): boolean {
     return (
       message === 'startDate must be before or equal to endDate' ||
       message === 'fromDate must be before or equal to toDate' ||
+      message === 'fromTs must be before or equal to toTs' ||
       message === 'Date range cannot be in the future' ||
       message.startsWith('Invalid timeframe:')
     );
