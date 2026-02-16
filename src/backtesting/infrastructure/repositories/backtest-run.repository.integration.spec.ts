@@ -353,4 +353,137 @@ maybeDescribe('BacktestRunRepository integration', () => {
       }),
     );
   });
+
+  it('applies pagination and timestamp range filters to signals series', async () => {
+    const runId = await repository.saveRun({
+      symbol: 'BTCUSDT',
+      interval: '15m',
+      strategyVersion: 'fvg-bos-v1',
+      config: {},
+      startTimeMs: 1704067200000n,
+      endTimeMs: 1704067319999n,
+      metrics: {
+        totalTrades: 0,
+        winningTrades: 0,
+        losingTrades: 0,
+        winRate: '0',
+        totalPnL: '0',
+        maxDrawdown: '0',
+        sharpeRatio: '0',
+        profitFactor: '0',
+        avgWin: '0',
+        avgLoss: '0',
+      },
+      trades: [],
+      signals: [
+        {
+          timestampMs: 1704067200000n,
+          signalType: 'BUY',
+          reason: 's1',
+          price: '1',
+        },
+        {
+          timestampMs: 1704067260000n,
+          signalType: 'SELL',
+          reason: 's2',
+          price: '2',
+        },
+        {
+          timestampMs: 1704067320000n,
+          signalType: 'BUY',
+          reason: 's3',
+          price: '3',
+        },
+      ],
+    });
+    createdRunIds.push(runId);
+
+    const paged = await repository.findSignalsByRunId({
+      runId,
+      page: 2,
+      limit: 1,
+    });
+    const ranged = await repository.findSignalsByRunId({
+      runId,
+      page: 1,
+      limit: 10,
+      fromTs: 1704067260000n,
+      toTs: 1704067320000n,
+    });
+
+    expect(paged).not.toBeNull();
+    expect(paged).toHaveProperty('total', 3);
+    expect(paged).toHaveProperty('page', 2);
+    expect(paged?.items).toHaveLength(1);
+    expect(paged?.items[0]).toHaveProperty('reason', 's2');
+
+    expect(ranged).not.toBeNull();
+    expect(ranged).toHaveProperty('total', 2);
+    expect(ranged?.items.map((item) => item.reason)).toEqual(['s2', 's3']);
+  });
+
+  it('applies pagination and timestamp range filters to equity series', async () => {
+    const runId = await repository.saveRun({
+      symbol: 'BTCUSDT',
+      interval: '15m',
+      strategyVersion: 'fvg-bos-v1',
+      config: {},
+      startTimeMs: 1704067200000n,
+      endTimeMs: 1704067319999n,
+      metrics: {
+        totalTrades: 0,
+        winningTrades: 0,
+        losingTrades: 0,
+        winRate: '0',
+        totalPnL: '0',
+        maxDrawdown: '0',
+        sharpeRatio: '0',
+        profitFactor: '0',
+        avgWin: '0',
+        avgLoss: '0',
+      },
+      trades: [],
+      equityPoints: [
+        {
+          timestampMs: 1704067200000n,
+          equity: '10000',
+          drawdown: '0',
+        },
+        {
+          timestampMs: 1704067260000n,
+          equity: '10010',
+          drawdown: '0',
+        },
+        {
+          timestampMs: 1704067320000n,
+          equity: '10005',
+          drawdown: '5',
+        },
+      ],
+    });
+    createdRunIds.push(runId);
+
+    const paged = await repository.findEquityByRunId({
+      runId,
+      page: 3,
+      limit: 1,
+    });
+    const ranged = await repository.findEquityByRunId({
+      runId,
+      page: 1,
+      limit: 10,
+      fromTs: 1704067260000n,
+      toTs: 1704067320000n,
+    });
+
+    expect(paged).not.toBeNull();
+    expect(paged).toHaveProperty('total', 3);
+    expect(paged).toHaveProperty('page', 3);
+    expect(paged?.items).toHaveLength(1);
+    expect(paged?.items[0]).toHaveProperty('equity', '10005');
+
+    expect(ranged).not.toBeNull();
+    expect(ranged).toHaveProperty('total', 2);
+    expect(ranged?.items.map((item) => item.equity)).toEqual(['10010', '10005']);
+  });
 });
