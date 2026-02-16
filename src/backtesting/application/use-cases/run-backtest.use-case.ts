@@ -1,0 +1,151 @@
+import { Inject, Injectable } from '@nestjs/common';
+import { Candle } from 'src/backtesting/domain/entities/candle.entity';
+import { MetricsCalculator } from 'src/backtesting/infrastructure/trade-simulation/metrics.calculator';
+import { RunBacktestRequestDto } from 'src/backtesting/interfaces/dtos/run-backtest-request.dto';
+import {
+  MARKET_DATA_REPOSITORY_TOKEN,
+  type IMarketDataRepository,
+} from 'src/backtesting/domain/interfaces/market-data-repository.interface';
+import {
+  STRATEGY_EVALUATOR_TOKEN,
+  type IStrategyEvaluator,
+} from 'src/backtesting/domain/interfaces/strategy-evaluator.interface';
+import {
+  TRADE_SIMULATOR_TOKEN,
+  type ITradeSimulator,
+} from 'src/backtesting/domain/interfaces/trade-simulator.interface';
+import { RiskModel } from 'src/backtesting/domain/value-objects/risk-model.value-object';
+import { Timeframe } from 'src/backtesting/domain/value-objects/timeframe.value-object';
+import { Timestamp } from 'src/backtesting/domain/value-objects/timestamp.value-object';
+
+@Injectable()
+export class RunBacktestUseCase {
+  constructor(
+    @Inject(MARKET_DATA_REPOSITORY_TOKEN)
+    private readonly marketDataRepository: IMarketDataRepository,
+    @Inject(STRATEGY_EVALUATOR_TOKEN)
+    private readonly strategyEvaluator: IStrategyEvaluator,
+    @Inject(TRADE_SIMULATOR_TOKEN)
+    private readonly tradeSimulator: ITradeSimulator,
+  ) {}
+
+  public async execute(command: RunBacktestRequestDto) {
+    const fromInterval = Timeframe.from(command.fromInterval ?? '1m');
+    const toInterval = Timeframe.from(command.toInterval ?? '15m');
+    const start = Timestamp.fromMs(new Date(command.startDate).getTime());
+    const end = Timestamp.fromMs(new Date(command.endDate).getTime());
+
+    if (start.isAfter(end)) {
+      throw new Error('startDate must be before or equal to endDate');
+    }
+
+    this.strategyEvaluator.reset();
+    this.tradeSimulator.reset();
+
+    const riskModel = RiskModel.from(
+      command.riskPercent ?? 2,
+      command.rewardRatio ?? 2,
+    );
+
+    let processedCandles = 0;
+    let generatedSignals = 0;
+    let lastCandle: Parameters<IStrategyEvaluator['evaluate']>[0] | null = null;
+    const useSameTimeframeContext = fromInterval.equals(toInterval);
+    let higherTimeframeIterator: AsyncIterator<
+      Candle,
+      unknown,
+      undefined
+    > | null = null;
+    let activeHigherTimeframeCandle: Candle | null = null;
+
+    if (!useSameTimeframeContext) {
+      higherTimeframeIterator = this.marketDataRepository
+        .getAggregatedStream(
+          command.symbol,
+          fromInterval,
+          toInterval,
+          start,
+          end,
+        )
+        [Symbol.asyncIterator]();
+      const higherTimeframeStep = await higherTimeframeIterator.next();
+      activeHigherTimeframeCandle = higherTimeframeStep.done
+        ? null
+        : higherTimeframeStep.value;
+    }
+
+    for await (const candle of this.marketDataRepository.getCandleStream(
+      command.symbol,
+      fromInterval.toString(),
+      start,
+      end,
+    )) {
+      processedCandles += 1;
+      lastCandle = candle;
+
+      while (
+        !useSameTimeframeContext &&
+        higherTimeframeIterator &&
+        activeHigherTimeframeCandle &&
+        candle.getOpenTime().isAfter(activeHigherTimeframeCandle.getCloseTime())
+      ) {
+        const higherTimeframeStep = await higherTimeframeIterator.next();
+        activeHigherTimeframeCandle = higherTimeframeStep.done
+          ? null
+          : higherTimeframeStep.value;
+      }
+
+      const higherCandleContext = useSameTimeframeContext
+        ? candle
+        : this.inRange(candle, activeHigherTimeframeCandle)
+          ? activeHigherTimeframeCandle
+          : null;
+
+      const signals = this.strategyEvaluator.evaluate(
+        candle,
+        higherCandleContext,
+      );
+      generatedSignals += signals.length;
+
+      for (const signal of signals) {
+        const existing = this.tradeSimulator.getOpenTrade();
+        if (existing && signal.getType() !== 'INVALID') {
+          this.tradeSimulator.closeOpenTrade(candle, 'new_signal');
+        }
+        this.tradeSimulator.processSignal(signal, riskModel);
+      }
+    }
+
+    if (lastCandle && this.tradeSimulator.getOpenTrade()) {
+      this.tradeSimulator.closeOpenTrade(lastCandle, 'end_of_backtest');
+    }
+
+    const closedTrades = this.tradeSimulator.getClosedTrades();
+    const metrics = MetricsCalculator.calculateMetrics(
+      closedTrades,
+      command.initialBalance ?? 10_000,
+    );
+
+    return {
+      symbol: command.symbol,
+      fromInterval: fromInterval.toString(),
+      toInterval: toInterval.toString(),
+      processedCandles,
+      generatedSignals,
+      metrics,
+    };
+  }
+
+  private inRange(
+    lowerCandle: Candle,
+    higherCandle: Candle | null,
+  ): higherCandle is Candle {
+    if (!higherCandle) {
+      return false;
+    }
+    return (
+      lowerCandle.getOpenTime().isAfterOrEqual(higherCandle.getOpenTime()) &&
+      lowerCandle.getOpenTime().isBeforeOrEqual(higherCandle.getCloseTime())
+    );
+  }
+}

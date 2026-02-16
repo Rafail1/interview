@@ -15,11 +15,13 @@ describe('BacktestingController', () => {
     } as any;
     const getStatusUseCaseMock = { execute: jest.fn() } as any;
     const getQueueOverviewUseCaseMock = { execute: jest.fn() } as any;
+    const runBacktestUseCaseMock = { execute: jest.fn() } as any;
 
     const controller = new BacktestingController(
       importUseCaseMock,
       getStatusUseCaseMock,
       getQueueOverviewUseCaseMock,
+      runBacktestUseCaseMock,
     );
 
     const dto: ImportBinanceDataRequestDto = {
@@ -66,11 +68,13 @@ describe('BacktestingController', () => {
       }),
     } as any;
     const getQueueOverviewUseCaseMock = { execute: jest.fn() } as any;
+    const runBacktestUseCaseMock = { execute: jest.fn() } as any;
 
     const controller = new BacktestingController(
       importUseCaseMock,
       getStatusUseCaseMock,
       getQueueOverviewUseCaseMock,
+      runBacktestUseCaseMock,
     );
 
     const result = await controller.getImportJobStatus('job-1');
@@ -86,11 +90,13 @@ describe('BacktestingController', () => {
       execute: jest.fn().mockResolvedValue(null),
     } as any;
     const getQueueOverviewUseCaseMock = { execute: jest.fn() } as any;
+    const runBacktestUseCaseMock = { execute: jest.fn() } as any;
 
     const controller = new BacktestingController(
       importUseCaseMock,
       getStatusUseCaseMock,
       getQueueOverviewUseCaseMock,
+      runBacktestUseCaseMock,
     );
 
     await expect(controller.getImportJobStatus('missing-job')).rejects.toBeInstanceOf(
@@ -110,11 +116,13 @@ describe('BacktestingController', () => {
       } as any;
       const getStatusUseCaseMock = { execute: jest.fn() } as any;
       const getQueueOverviewUseCaseMock = { execute: jest.fn() } as any;
+      const runBacktestUseCaseMock = { execute: jest.fn() } as any;
 
       const controller = new BacktestingController(
         importUseCaseMock,
         getStatusUseCaseMock,
         getQueueOverviewUseCaseMock,
+        runBacktestUseCaseMock,
       );
 
       const dto: ImportBinanceDataRequestDto = {
@@ -149,11 +157,13 @@ describe('BacktestingController', () => {
         ],
       }),
     } as any;
+    const runBacktestUseCaseMock = { execute: jest.fn() } as any;
 
     const controller = new BacktestingController(
       importUseCaseMock,
       getStatusUseCaseMock,
       getQueueOverviewUseCaseMock,
+      runBacktestUseCaseMock,
     );
 
     const result = controller.getImportQueueOverview();
@@ -172,5 +182,55 @@ describe('BacktestingController', () => {
         },
       ],
     });
+  });
+
+  it('runBacktest delegates to use-case and returns summary', async () => {
+    const importUseCaseMock = { execute: jest.fn() } as any;
+    const getStatusUseCaseMock = { execute: jest.fn() } as any;
+    const getQueueOverviewUseCaseMock = { execute: jest.fn() } as any;
+    const runBacktestUseCaseMock = {
+      execute: jest.fn().mockResolvedValue({
+        symbol: 'BTCUSDT',
+        fromInterval: '1m',
+        toInterval: '15m',
+        processedCandles: 100,
+        generatedSignals: 4,
+        metrics: {
+          totalTrades: 2,
+          winningTrades: 1,
+          losingTrades: 1,
+          drawTrades: 0,
+          winRate: '50.00',
+          totalPnL: '12.30',
+          roi: '0.12',
+          avgWin: '25.00',
+          avgLoss: '-12.70',
+          profitFactor: '1.97',
+          maxDrawdown: '8.00',
+          drawdownPercent: '0.08',
+          expectancy: '6.15',
+          sharpeRatio: '0.55',
+        },
+      }),
+    } as any;
+
+    const controller = new BacktestingController(
+      importUseCaseMock,
+      getStatusUseCaseMock,
+      getQueueOverviewUseCaseMock,
+      runBacktestUseCaseMock,
+    );
+
+    const result = await controller.runBacktest({
+      symbol: 'BTCUSDT',
+      startDate: '2024-01-01T00:00:00.000Z',
+      endDate: '2024-01-31T23:59:59.999Z',
+      fromInterval: '1m',
+      toInterval: '15m',
+    });
+
+    expect(runBacktestUseCaseMock.execute).toHaveBeenCalled();
+    expect(result).toHaveProperty('symbol', 'BTCUSDT');
+    expect(result).toHaveProperty('metrics.totalTrades', 2);
   });
 });

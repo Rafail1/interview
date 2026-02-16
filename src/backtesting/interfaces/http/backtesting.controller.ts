@@ -17,10 +17,13 @@ import {
 import { GetImportJobStatusUseCase } from 'src/backtesting/application/use-cases/get-import-job-status.use-case';
 import { GetImportQueueOverviewUseCase } from 'src/backtesting/application/use-cases/get-import-queue-overview.use-case';
 import { ImportBinanceDataUseCase } from 'src/backtesting/application/use-cases/import-binance-data.use-case';
+import { RunBacktestUseCase } from 'src/backtesting/application/use-cases/run-backtest.use-case';
 import { ImportBinanceDataRequestDto } from '../dtos/import-binance-data-request.dto';
 import { ImportBinanceDataResponseDto } from '../dtos/import-binance-data-response.dto';
 import { ImportJobStatusResponseDto } from '../dtos/import-job-status-response.dto';
 import { ImportQueueOverviewResponseDto } from '../dtos/import-queue-overview-response.dto';
+import { RunBacktestRequestDto } from '../dtos/run-backtest-request.dto';
+import { RunBacktestResponseDto } from '../dtos/run-backtest-response.dto';
 
 @ApiTags('backtesting')
 @Controller('backtesting')
@@ -29,6 +32,7 @@ export class BacktestingController {
     private readonly importBinanceDataUseCase: ImportBinanceDataUseCase,
     private readonly getImportJobStatusUseCase: GetImportJobStatusUseCase,
     private readonly getImportQueueOverviewUseCase: GetImportQueueOverviewUseCase,
+    private readonly runBacktestUseCase: RunBacktestUseCase,
   ) {}
 
   @Post('import')
@@ -40,10 +44,23 @@ export class BacktestingController {
     try {
       return await this.importBinanceDataUseCase.execute(body);
     } catch (error) {
-      if (
-        error instanceof Error &&
-        this.isImportRequestValidationError(error.message)
-      ) {
+      if (error instanceof Error && this.isClientInputError(error.message)) {
+        throw new BadRequestException(error.message);
+      }
+      throw error;
+    }
+  }
+
+  @Post('run')
+  @ApiOperation({ summary: 'Run backtest on imported market data' })
+  @ApiCreatedResponse({ type: RunBacktestResponseDto })
+  public async runBacktest(
+    @Body() body: RunBacktestRequestDto,
+  ): Promise<RunBacktestResponseDto> {
+    try {
+      return await this.runBacktestUseCase.execute(body);
+    } catch (error) {
+      if (error instanceof Error && this.isClientInputError(error.message)) {
         throw new BadRequestException(error.message);
       }
       throw error;
@@ -71,7 +88,7 @@ export class BacktestingController {
     return status;
   }
 
-  private isImportRequestValidationError(message: string): boolean {
+  private isClientInputError(message: string): boolean {
     return (
       message === 'startDate must be before or equal to endDate' ||
       message === 'Date range cannot be in the future' ||
