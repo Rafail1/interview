@@ -14,6 +14,22 @@ export class ImportJobStatusResponseDto {
   })
   readonly queuedPosition: number | null;
 
+  @ApiProperty({ description: 'Current total queue size' })
+  readonly queueSize: number;
+
+  @ApiProperty({ description: 'True if this job is still queued' })
+  readonly isQueued: boolean;
+
+  @ApiProperty({
+    description: 'Number of currently running import workers',
+  })
+  readonly activeImports: number;
+
+  @ApiProperty({
+    description: 'Maximum number of concurrent import workers',
+  })
+  readonly maxConcurrentImports: number;
+
   @ApiProperty()
   readonly symbol: string;
 

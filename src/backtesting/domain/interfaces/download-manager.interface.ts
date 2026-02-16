@@ -26,6 +26,10 @@ export type ImportJobProgress = {
   interval: string;
   status: ImportJobStatus;
   queuedPosition: number | null;
+  queueSize: number;
+  isQueued: boolean;
+  activeImports: number;
+  maxConcurrentImports: number;
   totalFiles: number;
   downloadedFiles: number;
   failedFiles: number;
@@ -36,9 +40,24 @@ export type ImportJobProgress = {
   updatedAt: Date;
 };
 
+export type ImportQueueJobView = {
+  jobId: string;
+  symbol: string;
+  interval: string;
+  queuedPosition: number;
+};
+
+export type ImportQueueOverview = {
+  queueSize: number;
+  activeImports: number;
+  maxConcurrentImports: number;
+  queuedJobs: ImportQueueJobView[];
+};
+
 export interface IDownloadManager {
   startImport(request: ImportBinanceRequest): Promise<ImportBinanceJobResult>;
   getJobStatus(jobId: string): Promise<ImportJobProgress | null>;
+  getQueueOverview(): ImportQueueOverview;
 }
 
 export const DOWNLOAD_MANAGER_TOKEN = Symbol('IDownloadManager');

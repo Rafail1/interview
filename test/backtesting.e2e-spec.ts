@@ -2,6 +2,7 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import { GetImportJobStatusUseCase } from '../src/backtesting/application/use-cases/get-import-job-status.use-case';
+import { GetImportQueueOverviewUseCase } from '../src/backtesting/application/use-cases/get-import-queue-overview.use-case';
 import { ImportBinanceDataUseCase } from '../src/backtesting/application/use-cases/import-binance-data.use-case';
 import { BacktestingController } from '../src/backtesting/interfaces/http/backtesting.controller';
 
@@ -16,6 +17,10 @@ describe('Backtesting (e2e)', () => {
     execute: jest.fn(),
   };
 
+  const getQueueOverviewUseCaseMock = {
+    execute: jest.fn(),
+  };
+
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       controllers: [BacktestingController],
@@ -27,6 +32,10 @@ describe('Backtesting (e2e)', () => {
         {
           provide: GetImportJobStatusUseCase,
           useValue: getStatusUseCaseMock,
+        },
+        {
+          provide: GetImportQueueOverviewUseCase,
+          useValue: getQueueOverviewUseCaseMock,
         },
       ],
     }).compile();
@@ -184,6 +193,10 @@ describe('Backtesting (e2e)', () => {
       jobId: 'job-e2e-2',
       status: 'downloading',
       queuedPosition: null,
+      queueSize: 0,
+      isQueued: false,
+      activeImports: 1,
+      maxConcurrentImports: 2,
       symbol: 'BTCUSDT',
       interval: '1m',
       totalFiles: 3,
@@ -211,5 +224,40 @@ describe('Backtesting (e2e)', () => {
     await request(app.getHttpServer())
       .get('/backtesting/import/missing-job')
       .expect(404);
+  });
+
+  it('GET /backtesting/import/queue returns queue overview', async () => {
+    getQueueOverviewUseCaseMock.execute.mockReturnValue({
+      queueSize: 2,
+      activeImports: 1,
+      maxConcurrentImports: 2,
+      queuedJobs: [
+        {
+          jobId: 'job-e2e-q-1',
+          symbol: 'ETHUSDT',
+          interval: '1m',
+          queuedPosition: 1,
+        },
+      ],
+    });
+
+    const res = await request(app.getHttpServer())
+      .get('/backtesting/import/queue')
+      .expect(200);
+
+    expect(getQueueOverviewUseCaseMock.execute).toHaveBeenCalled();
+    expect(res.body).toEqual({
+      queueSize: 2,
+      activeImports: 1,
+      maxConcurrentImports: 2,
+      queuedJobs: [
+        {
+          jobId: 'job-e2e-q-1',
+          symbol: 'ETHUSDT',
+          interval: '1m',
+          queuedPosition: 1,
+        },
+      ],
+    });
   });
 });

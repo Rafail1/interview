@@ -22,6 +22,8 @@ export {
   type IDownloadManager,
   type ImportBinanceJobResult,
   type ImportBinanceRequest,
+  type ImportQueueJobView,
+  type ImportQueueOverview,
   type ImportJobProgress,
   type ImportJobStatus,
   DOWNLOAD_MANAGER_TOKEN,

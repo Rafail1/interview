@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { GetImportJobStatusUseCase } from './application/use-cases/get-import-job-status.use-case';
+import { GetImportQueueOverviewUseCase } from './application/use-cases/get-import-queue-overview.use-case';
 import { ImportBinanceDataUseCase } from './application/use-cases/import-binance-data.use-case';
 import { DOWNLOAD_MANAGER_TOKEN } from './domain/interfaces/download-manager.interface';
 import { FVG_DETECTOR_TOKEN } from './domain/interfaces/fvg-detector.interface';
@@ -29,6 +30,7 @@ import { LOGGER_TOKEN } from 'src/core/interfaces/logger.interface';
     PrismaService,
     ImportBinanceDataUseCase,
     GetImportJobStatusUseCase,
+    GetImportQueueOverviewUseCase,
     MarketDataMapper,
     CandleAggregator,
     TimeframeCacheService,

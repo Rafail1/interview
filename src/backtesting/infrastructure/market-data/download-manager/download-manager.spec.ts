@@ -149,6 +149,10 @@ describe('DownloadManager', () => {
       interval: '1m',
       status: 'pending',
       queuedPosition: null,
+      queueSize: 1,
+      isQueued: true,
+      activeImports: 0,
+      maxConcurrentImports: 0,
       totalFiles: 1,
       downloadedFiles: 0,
       failedFiles: 0,
@@ -180,6 +184,23 @@ describe('DownloadManager', () => {
 
     const secondStatus = await manager.getJobStatus('job-2');
     expect(secondStatus?.queuedPosition).toBe(1);
+    expect(secondStatus?.queueSize).toBe(1);
+    expect(secondStatus?.isQueued).toBe(true);
+
+    const queueOverview = manager.getQueueOverview();
+    expect(queueOverview).toEqual({
+      queueSize: 1,
+      activeImports: 1,
+      maxConcurrentImports: 1,
+      queuedJobs: [
+        {
+          jobId: 'job-2',
+          symbol: 'ETHUSDT',
+          interval: '1m',
+          queuedPosition: 1,
+        },
+      ],
+    });
 
     if (!releaseFirstDownload) {
       throw new Error('Failed to initialize first download gate');

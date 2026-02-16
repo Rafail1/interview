@@ -15,10 +15,12 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { GetImportJobStatusUseCase } from 'src/backtesting/application/use-cases/get-import-job-status.use-case';
+import { GetImportQueueOverviewUseCase } from 'src/backtesting/application/use-cases/get-import-queue-overview.use-case';
 import { ImportBinanceDataUseCase } from 'src/backtesting/application/use-cases/import-binance-data.use-case';
 import { ImportBinanceDataRequestDto } from '../dtos/import-binance-data-request.dto';
 import { ImportBinanceDataResponseDto } from '../dtos/import-binance-data-response.dto';
 import { ImportJobStatusResponseDto } from '../dtos/import-job-status-response.dto';
+import { ImportQueueOverviewResponseDto } from '../dtos/import-queue-overview-response.dto';
 
 @ApiTags('backtesting')
 @Controller('backtesting')
@@ -26,6 +28,7 @@ export class BacktestingController {
   constructor(
     private readonly importBinanceDataUseCase: ImportBinanceDataUseCase,
     private readonly getImportJobStatusUseCase: GetImportJobStatusUseCase,
+    private readonly getImportQueueOverviewUseCase: GetImportQueueOverviewUseCase,
   ) {}
 
   @Post('import')
@@ -45,6 +48,13 @@ export class BacktestingController {
       }
       throw error;
     }
+  }
+
+  @Get('import/queue')
+  @ApiOperation({ summary: 'Get live import queue overview' })
+  @ApiOkResponse({ type: ImportQueueOverviewResponseDto })
+  public getImportQueueOverview(): ImportQueueOverviewResponseDto {
+    return this.getImportQueueOverviewUseCase.execute();
   }
 
   @Get('import/:jobId')

@@ -7,6 +7,7 @@ import {
   ImportBinanceJobResult,
   ImportBinanceRequest,
   ImportJobProgress,
+  ImportQueueOverview,
 } from 'src/backtesting/domain/interfaces/download-manager.interface';
 import { MARKET_DATA_REPOSITORY_TOKEN } from 'src/backtesting/domain/interfaces/market-data-repository.interface';
 import type { IMarketDataRepository } from 'src/backtesting/domain/interfaces/market-data-repository.interface';
@@ -78,9 +79,29 @@ export class DownloadManager implements IDownloadManager {
       return null;
     }
 
+    const queuedPosition = this.getQueuePosition(jobId);
+
     return {
       ...status,
-      queuedPosition: this.getQueuePosition(jobId),
+      queuedPosition,
+      queueSize: this.importQueue.length,
+      isQueued: queuedPosition !== null,
+      activeImports: this.activeImports,
+      maxConcurrentImports: this.maxConcurrentImports,
+    };
+  }
+
+  public getQueueOverview(): ImportQueueOverview {
+    return {
+      queueSize: this.importQueue.length,
+      activeImports: this.activeImports,
+      maxConcurrentImports: this.maxConcurrentImports,
+      queuedJobs: this.importQueue.map((item, index) => ({
+        jobId: item.jobId,
+        symbol: item.request.symbol,
+        interval: item.request.interval,
+        queuedPosition: index + 1,
+      })),
     };
   }
 

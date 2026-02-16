@@ -14,10 +14,12 @@ describe('BacktestingController', () => {
       }),
     } as any;
     const getStatusUseCaseMock = { execute: jest.fn() } as any;
+    const getQueueOverviewUseCaseMock = { execute: jest.fn() } as any;
 
     const controller = new BacktestingController(
       importUseCaseMock,
       getStatusUseCaseMock,
+      getQueueOverviewUseCaseMock,
     );
 
     const dto: ImportBinanceDataRequestDto = {
@@ -47,6 +49,10 @@ describe('BacktestingController', () => {
         jobId: 'job-1',
         status: 'downloading',
         queuedPosition: null,
+        queueSize: 0,
+        isQueued: false,
+        activeImports: 1,
+        maxConcurrentImports: 2,
         symbol: 'BTCUSDT',
         interval: '1m',
         totalFiles: 2,
@@ -59,10 +65,12 @@ describe('BacktestingController', () => {
         updatedAt: new Date('2024-01-01T00:10:00.000Z'),
       }),
     } as any;
+    const getQueueOverviewUseCaseMock = { execute: jest.fn() } as any;
 
     const controller = new BacktestingController(
       importUseCaseMock,
       getStatusUseCaseMock,
+      getQueueOverviewUseCaseMock,
     );
 
     const result = await controller.getImportJobStatus('job-1');
@@ -77,10 +85,12 @@ describe('BacktestingController', () => {
     const getStatusUseCaseMock = {
       execute: jest.fn().mockResolvedValue(null),
     } as any;
+    const getQueueOverviewUseCaseMock = { execute: jest.fn() } as any;
 
     const controller = new BacktestingController(
       importUseCaseMock,
       getStatusUseCaseMock,
+      getQueueOverviewUseCaseMock,
     );
 
     await expect(controller.getImportJobStatus('missing-job')).rejects.toBeInstanceOf(
@@ -99,10 +109,12 @@ describe('BacktestingController', () => {
         execute: jest.fn().mockRejectedValue(new Error(message)),
       } as any;
       const getStatusUseCaseMock = { execute: jest.fn() } as any;
+      const getQueueOverviewUseCaseMock = { execute: jest.fn() } as any;
 
       const controller = new BacktestingController(
         importUseCaseMock,
         getStatusUseCaseMock,
+        getQueueOverviewUseCaseMock,
       );
 
       const dto: ImportBinanceDataRequestDto = {
@@ -118,4 +130,47 @@ describe('BacktestingController', () => {
       );
     },
   );
+
+  it('getImportQueueOverview returns live queue summary', () => {
+    const importUseCaseMock = { execute: jest.fn() } as any;
+    const getStatusUseCaseMock = { execute: jest.fn() } as any;
+    const getQueueOverviewUseCaseMock = {
+      execute: jest.fn().mockReturnValue({
+        queueSize: 2,
+        activeImports: 1,
+        maxConcurrentImports: 2,
+        queuedJobs: [
+          {
+            jobId: 'job-2',
+            symbol: 'ETHUSDT',
+            interval: '1m',
+            queuedPosition: 1,
+          },
+        ],
+      }),
+    } as any;
+
+    const controller = new BacktestingController(
+      importUseCaseMock,
+      getStatusUseCaseMock,
+      getQueueOverviewUseCaseMock,
+    );
+
+    const result = controller.getImportQueueOverview();
+
+    expect(getQueueOverviewUseCaseMock.execute).toHaveBeenCalled();
+    expect(result).toEqual({
+      queueSize: 2,
+      activeImports: 1,
+      maxConcurrentImports: 2,
+      queuedJobs: [
+        {
+          jobId: 'job-2',
+          symbol: 'ETHUSDT',
+          interval: '1m',
+          queuedPosition: 1,
+        },
+      ],
+    });
+  });
 });
