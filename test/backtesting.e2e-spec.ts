@@ -483,6 +483,14 @@ describe('Backtesting (e2e)', () => {
     expect(getBacktestRunSignalsUseCaseMock.execute).not.toHaveBeenCalled();
   });
 
+  it('GET /backtesting/run/:runId/signals returns 400 when limit exceeds maximum', async () => {
+    await request(app.getHttpServer())
+      .get('/backtesting/run/run-e2e-1/signals?limit=1001')
+      .expect(400);
+
+    expect(getBacktestRunSignalsUseCaseMock.execute).not.toHaveBeenCalled();
+  });
+
   it('GET /backtesting/run/:runId/equity returns 400 when fromTs > toTs', async () => {
     getBacktestRunEquityUseCaseMock.execute.mockRejectedValueOnce(
       new Error('fromTs must be before or equal to toTs'),
@@ -491,6 +499,14 @@ describe('Backtesting (e2e)', () => {
     await request(app.getHttpServer())
       .get('/backtesting/run/run-e2e-1/equity?fromTs=200&toTs=100')
       .expect(400);
+  });
+
+  it('GET /backtesting/run/:runId/equity returns 400 when limit exceeds maximum', async () => {
+    await request(app.getHttpServer())
+      .get('/backtesting/run/run-e2e-1/equity?limit=5000')
+      .expect(400);
+
+    expect(getBacktestRunEquityUseCaseMock.execute).not.toHaveBeenCalled();
   });
 
   it('GET /backtesting/runs returns paginated run list', async () => {

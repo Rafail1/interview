@@ -1,6 +1,6 @@
 import { Transform } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsInt, IsOptional, Matches, Min } from 'class-validator';
+import { IsInt, IsOptional, Matches, Max, Min } from 'class-validator';
 
 export class BacktestRunSeriesQueryDto {
   @IsOptional()
@@ -14,7 +14,8 @@ export class BacktestRunSeriesQueryDto {
   @Transform(({ value }) => Number(value))
   @IsInt()
   @Min(1)
-  @ApiPropertyOptional({ default: 100 })
+  @Max(1000)
+  @ApiPropertyOptional({ default: 100, maximum: 1000 })
   readonly limit?: number;
 
   @IsOptional()
