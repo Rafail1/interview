@@ -96,9 +96,13 @@ These rules are the authoritative constraints an LLM or automated coder must fol
 
 6. No mapper usage in use-cases/domain: Mappers live in `infrastructure` and are used by infra code (repositories/controllers) only. Use-cases should operate on domain objects only.
 
-7. DTO boundary: Controllers accept/return DTOs (`src/tasks/interfaces/dtos/*`), convert to domain-friendly shapes/commands, call use-cases, and map results back to DTOs.
+7. ORM/persistence abstraction: Mappers and repositories must not reference specific ORM names in method names or types. Use generic names like `toPersistence()`, `toDomain()`, `fromPersistence()` instead of `toPrismaData()`, `toTypeOrmEntity()`. This allows seamless migration between ORMs (Prisma, TypeORM, Sequelize, etc.) without refactoring domain/application layers.
+   - Example: Repository uses `prisma.task.find()` internally, but mapper method is `toPersistence()`, not `toPrismaData()`.
+   - Rationale: keep infrastructure swappable and maintain clean layering.
 
-8. No deep-relative imports: Prefer root-alias `src/...` (configure `tsconfig.paths`) or short relative imports. Avoid long `../../../..` chains in imports.
+8. DTO boundary: Controllers accept/return DTOs (`src/tasks/interfaces/dtos/*`), convert to domain-friendly shapes/commands, call use-cases, and map results back to DTOs.
+
+9. No deep-relative imports: Prefer root-alias `src/...` (configure `tsconfig.paths`) or short relative imports. Avoid long `../../../..` chains in imports.
 
 9. Single responsibility per file & naming: One exported top-level class or interface per file; file name matches symbol name (e.g., `create-task.use-case.ts` contains `CreateTaskUseCase`).
 
@@ -182,7 +186,8 @@ Appendix — Practical examples (from repo)
   - Does not import: mappers or infrastructure implementations.
 
 - Mapper example: `src/tasks/infrastructure/mappers/task.mapper.ts`
-  - Responsibility: map between ORM entity (`src/tasks/infrastructure/entities/task-orm.entity.ts`) and domain `Task`.
+  - Responsibility: map between persistence layer (Prisma) and domain `Task` without exposing ORM-specific types.
+  - Methods: `toDomain(record)` converts persistence record to domain entity; `toPersistence(task)` converts domain to plain object compatible with any ORM.
 
 - Repository interface: `src/tasks/domain/interfaces/task.repository.interface.ts`
   - Defines contract used by use-cases; implementation in `src/tasks/infrastructure/repositories/task.repository.ts`.

@@ -1,7 +1,5 @@
 import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
 import { TaskRepository } from './repositories/task.repository';
-import { TaskEntityOrm } from './entities/task-orm.entity';
 import { TaskMapper } from './mappers/task.mapper';
 import { TASK_REPOSITORY_TOKEN } from '../domain/interfaces/task.repository.interface';
 import { RabbitMQEventPublisher } from './messaging/rabbitmq-event.publisher';
@@ -13,12 +11,12 @@ import { NestLoggerService } from 'src/core/infrastructure/nest-logger.service';
 import { LOGGER_TOKEN } from 'src/core/interfaces/logger.interface';
 import { CONNECTION_SERVICE_TOKEN } from 'src/core/interfaces/connection.service.interface';
 import { RabbitMQConnectionService } from 'src/core/infrastructure/rabbitmq-connection.service';
+import { PrismaService } from 'src/core/infrastructure/prisma.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([TaskEntityOrm])],
   providers: [
+    PrismaService,
     TaskMapper,
-
     {
       provide: TASK_REPOSITORY_TOKEN,
       useClass: TaskRepository,
