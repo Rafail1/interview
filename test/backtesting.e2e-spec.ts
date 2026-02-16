@@ -5,6 +5,7 @@ import { GetImportJobStatusUseCase } from '../src/backtesting/application/use-ca
 import { GetImportQueueOverviewUseCase } from '../src/backtesting/application/use-cases/get-import-queue-overview.use-case';
 import { ImportBinanceDataUseCase } from '../src/backtesting/application/use-cases/import-binance-data.use-case';
 import { GetBacktestRunUseCase } from '../src/backtesting/application/use-cases/get-backtest-run.use-case';
+import { GetBacktestRunSummaryUseCase } from '../src/backtesting/application/use-cases/get-backtest-run-summary.use-case';
 import { GetBacktestRunSignalsUseCase } from '../src/backtesting/application/use-cases/get-backtest-run-signals.use-case';
 import { GetBacktestRunEquityUseCase } from '../src/backtesting/application/use-cases/get-backtest-run-equity.use-case';
 import { ListBacktestRunsUseCase } from '../src/backtesting/application/use-cases/list-backtest-runs.use-case';
@@ -31,6 +32,10 @@ describe('Backtesting (e2e)', () => {
   };
 
   const getBacktestRunUseCaseMock = {
+    execute: jest.fn(),
+  };
+
+  const getBacktestRunSummaryUseCaseMock = {
     execute: jest.fn(),
   };
 
@@ -69,6 +74,10 @@ describe('Backtesting (e2e)', () => {
         {
           provide: GetBacktestRunUseCase,
           useValue: getBacktestRunUseCaseMock,
+        },
+        {
+          provide: GetBacktestRunSummaryUseCase,
+          useValue: getBacktestRunSummaryUseCaseMock,
         },
         {
           provide: GetBacktestRunSignalsUseCase,
@@ -397,6 +406,48 @@ describe('Backtesting (e2e)', () => {
 
     await request(app.getHttpServer())
       .get('/backtesting/run/missing-run')
+      .expect(404);
+  });
+
+  it('GET /backtesting/run/:runId/summary returns compact run summary', async () => {
+    getBacktestRunSummaryUseCaseMock.execute.mockResolvedValue({
+      id: 'run-e2e-1',
+      symbol: 'BTCUSDT',
+      interval: '15m',
+      strategyVersion: 'fvg-bos-v1',
+      startTime: '1704067200000',
+      endTime: '1706745599000',
+      totalTrades: 2,
+      winningTrades: 1,
+      losingTrades: 1,
+      winRate: 50,
+      totalPnL: '12.30',
+      maxDrawdown: '8.00',
+      sharpeRatio: 0.55,
+      profitFactor: 1.97,
+      signalsCount: 4,
+      equityPointsCount: 3,
+      lastEquity: '10012.30',
+      lastDrawdown: '2.50',
+      createdAt: '2024-02-01T00:00:00.000Z',
+    });
+
+    const res = await request(app.getHttpServer())
+      .get('/backtesting/run/run-e2e-1/summary')
+      .expect(200);
+
+    expect(getBacktestRunSummaryUseCaseMock.execute).toHaveBeenCalledWith(
+      'run-e2e-1',
+    );
+    expect(res.body).toHaveProperty('id', 'run-e2e-1');
+    expect(res.body).toHaveProperty('lastEquity', '10012.30');
+  });
+
+  it('GET /backtesting/run/:runId/summary returns 404 when run not found', async () => {
+    getBacktestRunSummaryUseCaseMock.execute.mockResolvedValueOnce(null);
+
+    await request(app.getHttpServer())
+      .get('/backtesting/run/missing-run/summary')
       .expect(404);
   });
 

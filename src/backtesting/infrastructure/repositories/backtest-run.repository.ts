@@ -73,6 +73,32 @@ export class BacktestRunRepository implements IBacktestRunRepository {
     return this.backtestRunMapper.toDomainRun(run);
   }
 
+  public async findSummaryById(runId: string) {
+    const run = await this.prisma.backtestRun.findUnique({
+      where: { id: runId },
+      include: {
+        _count: {
+          select: {
+            signals: true,
+            equityPoints: true,
+          },
+        },
+        equityPoints: {
+          orderBy: {
+            timestamp: 'desc',
+          },
+          take: 1,
+        },
+      },
+    });
+
+    if (!run) {
+      return null;
+    }
+
+    return this.backtestRunMapper.toDomainRunSummary(run);
+  }
+
   public async listRuns(input: ListBacktestRunsInput) {
     const where = {
       ...(input.symbol ? { symbol: input.symbol } : {}),

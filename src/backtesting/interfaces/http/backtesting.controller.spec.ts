@@ -8,6 +8,7 @@ type UseCaseMocks = {
   getQueueOverviewUseCaseMock: { execute: jest.Mock };
   runBacktestUseCaseMock: { execute: jest.Mock };
   getBacktestRunUseCaseMock: { execute: jest.Mock };
+  getBacktestRunSummaryUseCaseMock: { execute: jest.Mock };
   getBacktestRunSignalsUseCaseMock: { execute: jest.Mock };
   getBacktestRunEquityUseCaseMock: { execute: jest.Mock };
   listBacktestRunsUseCaseMock: { execute: jest.Mock };
@@ -20,6 +21,7 @@ function makeController(overrides?: Partial<UseCaseMocks>) {
     getQueueOverviewUseCaseMock: { execute: jest.fn() },
     runBacktestUseCaseMock: { execute: jest.fn() },
     getBacktestRunUseCaseMock: { execute: jest.fn() },
+    getBacktestRunSummaryUseCaseMock: { execute: jest.fn() },
     getBacktestRunSignalsUseCaseMock: { execute: jest.fn() },
     getBacktestRunEquityUseCaseMock: { execute: jest.fn() },
     listBacktestRunsUseCaseMock: { execute: jest.fn() },
@@ -32,6 +34,7 @@ function makeController(overrides?: Partial<UseCaseMocks>) {
     mocks.getQueueOverviewUseCaseMock as any,
     mocks.runBacktestUseCaseMock as any,
     mocks.getBacktestRunUseCaseMock as any,
+    mocks.getBacktestRunSummaryUseCaseMock as any,
     mocks.getBacktestRunSignalsUseCaseMock as any,
     mocks.getBacktestRunEquityUseCaseMock as any,
     mocks.listBacktestRunsUseCaseMock as any,
@@ -270,6 +273,54 @@ describe('BacktestingController', () => {
     await expect(controller.getBacktestRun('missing-run')).rejects.toBeInstanceOf(
       NotFoundException,
     );
+  });
+
+  it('getBacktestRunSummary returns compact summary when found', async () => {
+    const { controller, mocks } = makeController({
+      getBacktestRunSummaryUseCaseMock: {
+        execute: jest.fn().mockResolvedValue({
+          id: 'run-1',
+          symbol: 'BTCUSDT',
+          interval: '15m',
+          strategyVersion: 'fvg-bos-v1',
+          startTime: '1704067200000',
+          endTime: '1706745599000',
+          totalTrades: 2,
+          winningTrades: 1,
+          losingTrades: 1,
+          winRate: 50,
+          totalPnL: '12.30',
+          maxDrawdown: '8.00',
+          sharpeRatio: 0.55,
+          profitFactor: 1.97,
+          signalsCount: 4,
+          equityPointsCount: 3,
+          lastEquity: '10012.30',
+          lastDrawdown: '2.50',
+          createdAt: new Date('2024-02-01T00:00:00.000Z'),
+        }),
+      },
+    });
+
+    const result = await controller.getBacktestRunSummary('run-1');
+
+    expect(mocks.getBacktestRunSummaryUseCaseMock.execute).toHaveBeenCalledWith(
+      'run-1',
+    );
+    expect(result).toHaveProperty('id', 'run-1');
+    expect(result).toHaveProperty('lastEquity', '10012.30');
+  });
+
+  it('getBacktestRunSummary throws NotFoundException when run missing', async () => {
+    const { controller } = makeController({
+      getBacktestRunSummaryUseCaseMock: {
+        execute: jest.fn().mockResolvedValue(null),
+      },
+    });
+
+    await expect(
+      controller.getBacktestRunSummary('missing-run'),
+    ).rejects.toBeInstanceOf(NotFoundException);
   });
 
   it('getBacktestRunSignals returns persisted signals when found', async () => {

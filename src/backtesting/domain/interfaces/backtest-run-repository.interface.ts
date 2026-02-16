@@ -144,9 +144,32 @@ export type BacktestEquityPointListView = {
   total: number;
 };
 
+export type BacktestRunSummaryView = {
+  id: string;
+  symbol: string;
+  interval: string;
+  strategyVersion: string;
+  startTime: string;
+  endTime: string;
+  totalTrades: number;
+  winningTrades: number;
+  losingTrades: number;
+  winRate: number;
+  totalPnL: string;
+  maxDrawdown: string;
+  sharpeRatio: number;
+  profitFactor: number;
+  signalsCount: number;
+  equityPointsCount: number;
+  lastEquity: string | null;
+  lastDrawdown: string | null;
+  createdAt: Date;
+};
+
 export interface IBacktestRunRepository {
   saveRun(input: SaveBacktestRunInput): Promise<string>;
   findById(runId: string): Promise<BacktestRunView | null>;
+  findSummaryById(runId: string): Promise<BacktestRunSummaryView | null>;
   listRuns(input: ListBacktestRunsInput): Promise<BacktestRunListView>;
   findSignalsByRunId(
     input: GetBacktestRunSeriesInput,

@@ -19,12 +19,14 @@ import { GetImportJobStatusUseCase } from 'src/backtesting/application/use-cases
 import { GetImportQueueOverviewUseCase } from 'src/backtesting/application/use-cases/get-import-queue-overview.use-case';
 import { ImportBinanceDataUseCase } from 'src/backtesting/application/use-cases/import-binance-data.use-case';
 import { GetBacktestRunUseCase } from 'src/backtesting/application/use-cases/get-backtest-run.use-case';
+import { GetBacktestRunSummaryUseCase } from 'src/backtesting/application/use-cases/get-backtest-run-summary.use-case';
 import { GetBacktestRunSignalsUseCase } from 'src/backtesting/application/use-cases/get-backtest-run-signals.use-case';
 import { GetBacktestRunEquityUseCase } from 'src/backtesting/application/use-cases/get-backtest-run-equity.use-case';
 import { ListBacktestRunsUseCase } from 'src/backtesting/application/use-cases/list-backtest-runs.use-case';
 import { RunBacktestUseCase } from 'src/backtesting/application/use-cases/run-backtest.use-case';
 import { BacktestRunEquityResponseDto } from '../dtos/backtest-run-equity-response.dto';
 import { BacktestRunResponseDto } from '../dtos/backtest-run-response.dto';
+import { BacktestRunSummaryResponseDto } from '../dtos/backtest-run-summary-response.dto';
 import { BacktestRunSeriesQueryDto } from '../dtos/backtest-run-series-query.dto';
 import { BacktestRunSignalsResponseDto } from '../dtos/backtest-run-signals-response.dto';
 import { ImportBinanceDataRequestDto } from '../dtos/import-binance-data-request.dto';
@@ -45,6 +47,7 @@ export class BacktestingController {
     private readonly getImportQueueOverviewUseCase: GetImportQueueOverviewUseCase,
     private readonly runBacktestUseCase: RunBacktestUseCase,
     private readonly getBacktestRunUseCase: GetBacktestRunUseCase,
+    private readonly getBacktestRunSummaryUseCase: GetBacktestRunSummaryUseCase,
     private readonly getBacktestRunSignalsUseCase: GetBacktestRunSignalsUseCase,
     private readonly getBacktestRunEquityUseCase: GetBacktestRunEquityUseCase,
     private readonly listBacktestRunsUseCase: ListBacktestRunsUseCase,
@@ -131,6 +134,20 @@ export class BacktestingController {
       throw new NotFoundException(`Backtest run not found: ${runId}`);
     }
     return run;
+  }
+
+  @Get('run/:runId/summary')
+  @ApiOperation({ summary: 'Get compact persisted summary for a backtest run' })
+  @ApiOkResponse({ type: BacktestRunSummaryResponseDto })
+  @ApiNotFoundResponse({ description: 'Backtest run not found' })
+  public async getBacktestRunSummary(
+    @Param('runId') runId: string,
+  ): Promise<BacktestRunSummaryResponseDto> {
+    const summary = await this.getBacktestRunSummaryUseCase.execute(runId);
+    if (!summary) {
+      throw new NotFoundException(`Backtest run not found: ${runId}`);
+    }
+    return summary;
   }
 
   @Get('run/:runId/signals')

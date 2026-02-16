@@ -9,6 +9,7 @@ import {
 import {
   BacktestEquityPointView,
   BacktestRunListItemView,
+  BacktestRunSummaryView,
   BacktestSignalEventView,
   BacktestRunView,
   BacktestTradeView,
@@ -114,6 +115,37 @@ export class BacktestRunMapper {
       totalTrades: run.totalTrades,
       winRate: run.winRate,
       totalPnL: run.totalPnL,
+      createdAt: run.createdAt,
+    };
+  }
+
+  public toDomainRunSummary(
+    run: BacktestRun & {
+      _count: { signals: number; equityPoints: number };
+      equityPoints: EquityPoint[];
+    },
+  ): BacktestRunSummaryView {
+    const lastPoint = run.equityPoints[0] ?? null;
+
+    return {
+      id: run.id,
+      symbol: run.symbol,
+      interval: run.interval,
+      strategyVersion: run.strategyVersion,
+      startTime: run.startTime.toString(),
+      endTime: run.endTime.toString(),
+      totalTrades: run.totalTrades,
+      winningTrades: run.winningTrades,
+      losingTrades: run.losingTrades,
+      winRate: run.winRate,
+      totalPnL: run.totalPnL,
+      maxDrawdown: run.maxDrawdown,
+      sharpeRatio: run.sharpeRatio,
+      profitFactor: run.profitFactor,
+      signalsCount: run._count.signals,
+      equityPointsCount: run._count.equityPoints,
+      lastEquity: lastPoint?.equity ?? null,
+      lastDrawdown: lastPoint?.drawdown ?? null,
       createdAt: run.createdAt,
     };
   }

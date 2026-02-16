@@ -488,4 +488,58 @@ maybeDescribe('BacktestRunRepository integration', () => {
     expect(ranged).toHaveProperty('total', 2);
     expect(ranged?.items.map((item) => item.equity)).toEqual(['10010', '10005']);
   });
+
+  it('reads compact summary including latest equity snapshot', async () => {
+    const runId = await repository.saveRun({
+      symbol: 'BTCUSDT',
+      interval: '15m',
+      strategyVersion: 'fvg-bos-v1',
+      config: {},
+      startTimeMs: 1704067200000n,
+      endTimeMs: 1704067319999n,
+      metrics: {
+        totalTrades: 1,
+        winningTrades: 1,
+        losingTrades: 0,
+        winRate: '100',
+        totalPnL: '12.3',
+        maxDrawdown: '1.5',
+        sharpeRatio: '0.8',
+        profitFactor: '2.4',
+        avgWin: '12.3',
+        avgLoss: '0',
+      },
+      trades: [],
+      signals: [
+        {
+          timestampMs: 1704067200000n,
+          signalType: 'BUY',
+          reason: 'summary_signal',
+          price: '1',
+        },
+      ],
+      equityPoints: [
+        {
+          timestampMs: 1704067200000n,
+          equity: '10000',
+          drawdown: '0',
+        },
+        {
+          timestampMs: 1704067319999n,
+          equity: '10012.3',
+          drawdown: '1.5',
+        },
+      ],
+    });
+    createdRunIds.push(runId);
+
+    const summary = await repository.findSummaryById(runId);
+
+    expect(summary).not.toBeNull();
+    expect(summary).toHaveProperty('id', runId);
+    expect(summary).toHaveProperty('signalsCount', 1);
+    expect(summary).toHaveProperty('equityPointsCount', 2);
+    expect(summary).toHaveProperty('lastEquity', '10012.3');
+    expect(summary).toHaveProperty('lastDrawdown', '1.5');
+  });
 });
