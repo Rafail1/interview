@@ -88,6 +88,12 @@ export class BacktestRunResponseDto {
   readonly avgLoss: string;
 
   @ApiProperty()
+  readonly signalsCount: number;
+
+  @ApiProperty()
+  readonly equityPointsCount: number;
+
+  @ApiProperty()
   readonly createdAt: Date;
 
   @ApiProperty({ type: [BacktestTradeResponseDto] })

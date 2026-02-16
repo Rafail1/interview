@@ -245,6 +245,8 @@ describe('BacktestingController', () => {
           profitFactor: 1.97,
           avgWin: '25.00',
           avgLoss: '-12.70',
+          signalsCount: 4,
+          equityPointsCount: 3,
           createdAt: new Date('2024-02-01T00:00:00.000Z'),
           trades: [],
         }),
@@ -256,6 +258,8 @@ describe('BacktestingController', () => {
     expect(mocks.getBacktestRunUseCaseMock.execute).toHaveBeenCalledWith('run-1');
     expect(result).toHaveProperty('id', 'run-1');
     expect(result).toHaveProperty('symbol', 'BTCUSDT');
+    expect(result).toHaveProperty('signalsCount', 4);
+    expect(result).toHaveProperty('equityPointsCount', 3);
   });
 
   it('getBacktestRun throws NotFoundException when run missing', async () => {

@@ -52,6 +52,12 @@ export class BacktestRunRepository implements IBacktestRunRepository {
     const run = await this.prisma.backtestRun.findUnique({
       where: { id: runId },
       include: {
+        _count: {
+          select: {
+            signals: true,
+            equityPoints: true,
+          },
+        },
         trades: {
           orderBy: {
             entryTime: 'asc',

@@ -67,6 +67,8 @@ export type BacktestRunView = {
   profitFactor: number;
   avgWin: string;
   avgLoss: string;
+  signalsCount: number;
+  equityPointsCount: number;
   createdAt: Date;
   trades: BacktestTradeView[];
 };

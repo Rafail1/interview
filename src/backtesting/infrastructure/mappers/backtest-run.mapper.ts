@@ -73,7 +73,10 @@ export class BacktestRunMapper {
   }
 
   public toDomainRun(
-    run: BacktestRun & { trades: BacktestTrade[] },
+    run: BacktestRun & {
+      trades: BacktestTrade[];
+      _count: { signals: number; equityPoints: number };
+    },
   ): BacktestRunView {
     return {
       id: run.id,
@@ -93,6 +96,8 @@ export class BacktestRunMapper {
       profitFactor: run.profitFactor,
       avgWin: run.avgWin,
       avgLoss: run.avgLoss,
+      signalsCount: run._count.signals,
+      equityPointsCount: run._count.equityPoints,
       createdAt: run.createdAt,
       trades: run.trades.map((trade) => this.toDomainTrade(trade)),
     };

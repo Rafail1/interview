@@ -109,6 +109,8 @@ maybeDescribe('BacktestRunRepository integration', () => {
     expect(run).toHaveProperty('endTime', '1704067319999');
     expect(run).toHaveProperty('totalTrades', 2);
     expect(run).toHaveProperty('winRate', 100);
+    expect(run).toHaveProperty('signalsCount', 1);
+    expect(run).toHaveProperty('equityPointsCount', 1);
     expect(run).toHaveProperty('config.fromInterval', '1m');
     expect(run).toHaveProperty('config.toInterval', '15m');
     expect(run?.trades).toHaveLength(2);

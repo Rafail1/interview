@@ -375,6 +375,8 @@ describe('Backtesting (e2e)', () => {
       profitFactor: 1.97,
       avgWin: '25.00',
       avgLoss: '-12.70',
+      signalsCount: 4,
+      equityPointsCount: 3,
       createdAt: '2024-02-01T00:00:00.000Z',
       trades: [],
     });
@@ -386,6 +388,8 @@ describe('Backtesting (e2e)', () => {
     expect(getBacktestRunUseCaseMock.execute).toHaveBeenCalledWith('run-e2e-1');
     expect(res.body).toHaveProperty('id', 'run-e2e-1');
     expect(res.body).toHaveProperty('symbol', 'BTCUSDT');
+    expect(res.body).toHaveProperty('signalsCount', 4);
+    expect(res.body).toHaveProperty('equityPointsCount', 3);
   });
 
   it('GET /backtesting/run/:runId returns 404 when run not found', async () => {
