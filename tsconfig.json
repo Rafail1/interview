@@ -28,6 +28,12 @@
     "experimentalResolver": true,
     "compilerOptions": {
       "module": "NodeNext"
+    },
+    "baseUrl": ".",
+    "paths": {
+      "src/*": [
+        "src/*"
+      ]
     }
   }
 }

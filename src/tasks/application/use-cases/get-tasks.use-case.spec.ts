@@ -1,5 +1,5 @@
 import { GetTasksUseCase } from './get-tasks.use-case';
-import { Task } from '../../domain/entities/task.entity';
+import { Task } from 'src/tasks/domain/entities/task.entity';
 
 describe('GetTasksUseCase', () => {
   it('returns tasks from repository', async () => {

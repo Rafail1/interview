@@ -1,10 +1,10 @@
 import { TasksController } from './tasks.controller';
-import { Task } from '../../domain/entities/task.entity';
+import { Task } from 'src/tasks/domain/entities/task.entity';
 import { CreateTaskDto } from '../dtos/task.dto';
 import {
   NotFoundAppException,
   ConflictAppException,
-} from '../../../core/exceptions/index';
+} from 'src/core/exceptions/index';
 import {
   NotFoundException as HttpNotFound,
   ConflictException as HttpConflict,

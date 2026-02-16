@@ -2,8 +2,8 @@ import { Injectable, Inject } from '@nestjs/common';
 import {
   type ILogger,
   LOGGER_TOKEN,
-} from '../../../core/interfaces/logger.interface';
-import { ITaskEventHandler } from '../../../core/interfaces/task-event-handler.interface';
+} from 'src/core/interfaces/logger.interface';
+import { ITaskEventHandler } from 'src/core/interfaces/task-event-handler.interface';
 
 @Injectable()
 export class TaskEventHandlerService implements ITaskEventHandler {

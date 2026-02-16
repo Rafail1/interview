@@ -19,14 +19,14 @@ import {
   ApiOkResponse,
   ApiBody,
 } from '@nestjs/swagger';
-import { CreateTaskUseCase } from '../../application/use-cases/create-task.use-case';
-import { CompleteTaskUseCase } from '../../application/use-cases/complete-task.use-case';
-import { GetTasksUseCase } from '../../application/use-cases/get-tasks.use-case';
+import { CreateTaskUseCase } from 'src/tasks/application/use-cases/create-task.use-case';
+import { CompleteTaskUseCase } from 'src/tasks/application/use-cases/complete-task.use-case';
+import { GetTasksUseCase } from 'src/tasks/application/use-cases/get-tasks.use-case';
 import { CreateTaskDto } from '../dtos/task.dto';
 import {
   NotFoundAppException,
   ConflictAppException,
-} from '../../../core/exceptions/index';
+} from 'src/core/exceptions/index';
 
 @ApiTags('tasks')
 @Controller('tasks')

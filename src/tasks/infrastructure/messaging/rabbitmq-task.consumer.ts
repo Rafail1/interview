@@ -3,7 +3,7 @@ import * as amqp from 'amqplib';
 import {
   type IConnectionService,
   CONNECTION_SERVICE_TOKEN,
-} from '../../../core/interfaces/connection.service.interface';
+} from 'src/core/interfaces/connection.service.interface';
 import {
   type ILogger,
   LOGGER_TOKEN,

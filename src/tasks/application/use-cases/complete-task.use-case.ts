@@ -2,16 +2,16 @@ import { Inject, Injectable } from '@nestjs/common';
 import {
   TASK_REPOSITORY_TOKEN,
   type ITaskRepository,
-} from '../../domain/interfaces/task.repository.interface';
+} from 'src/tasks/domain/interfaces/task.repository.interface';
 import {
   NotFoundAppException,
   ConflictAppException,
-} from '../../../core/exceptions/index';
+} from 'src/core/exceptions/index';
 import {
   EVENT_PUBLISHER_TOKEN,
   type IEventPublisher,
-} from '../../../core/interfaces/event-publisher.interface';
-import { isErrorLike } from '../../../core/utils/type-guards';
+} from 'src/core/interfaces/event-publisher.interface';
+import { isErrorLike } from 'src/core/utils/type-guards';
 
 interface CompleteTaskCommand {
   taskId: string;

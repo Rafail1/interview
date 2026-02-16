@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { TaskEntityOrm } from '../entities/task-orm.entity';
-import { Task } from '../../domain/entities/task.entity';
-import { TaskStatus } from '../../domain/value-objects/task-status.value-object';
-import { Priority } from '../../domain/value-objects/priority.value-object';
+import { Task } from 'src/tasks/domain/entities/task.entity';
+import { TaskStatus } from 'src/tasks/domain/value-objects/task-status.value-object';
+import { Priority } from 'src/tasks/domain/value-objects/priority.value-object';
 
 @Injectable()
 export class TaskMapper {

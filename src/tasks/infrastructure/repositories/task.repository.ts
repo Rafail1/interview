@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { ITaskRepository } from '../../domain/interfaces/task.repository.interface';
-import { Task } from '../../domain/entities/task.entity';
+import { ITaskRepository } from 'src/tasks/domain/interfaces/task.repository.interface';
+import { Task } from 'src/tasks/domain/entities/task.entity';
 import { TaskEntityOrm } from '../entities/task-orm.entity';
 import { TaskMapper } from '../mappers/task.mapper';
 
