@@ -46,6 +46,9 @@ class BacktestMetricsDto {
 
 export class RunBacktestResponseDto {
   @ApiProperty()
+  readonly runId: string;
+
+  @ApiProperty()
   readonly symbol: string;
 
   @ApiProperty()

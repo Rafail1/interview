@@ -67,11 +67,15 @@ describe('RunBacktestUseCase', () => {
       closeOpenTrade: jest.fn(),
       getClosedTrades: jest.fn().mockReturnValue([]),
     } as any;
+    const backtestRunRepositoryMock = {
+      saveRun: jest.fn().mockResolvedValue('run-1'),
+    } as any;
 
     const useCase = new RunBacktestUseCase(
       marketDataRepositoryMock,
       strategyEvaluatorMock,
       tradeSimulatorMock,
+      backtestRunRepositoryMock,
     );
 
     const result = await useCase.execute({
@@ -100,13 +104,26 @@ describe('RunBacktestUseCase', () => {
       candle2,
       'end_of_backtest',
     );
+    expect(backtestRunRepositoryMock.saveRun).toHaveBeenCalledWith(
+      expect.objectContaining({
+        symbol: 'BTCUSDT',
+        interval: '15m',
+        strategyVersion: 'fvg-bos-v1',
+      }),
+    );
+    expect(result).toHaveProperty('runId', 'run-1');
     expect(result).toHaveProperty('processedCandles', 2);
     expect(result).toHaveProperty('generatedSignals', 1);
     expect(result).toHaveProperty('metrics.totalTrades', 0);
   });
 
   it('throws when startDate is after endDate', async () => {
-    const useCase = new RunBacktestUseCase({} as any, {} as any, {} as any);
+    const useCase = new RunBacktestUseCase(
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+    );
 
     await expect(
       useCase.execute({
@@ -140,11 +157,15 @@ describe('RunBacktestUseCase', () => {
       closeOpenTrade: jest.fn(),
       getClosedTrades: jest.fn().mockReturnValue([]),
     } as any;
+    const backtestRunRepositoryMock = {
+      saveRun: jest.fn().mockResolvedValue('run-2'),
+    } as any;
 
     const useCase = new RunBacktestUseCase(
       marketDataRepositoryMock,
       strategyEvaluatorMock,
       tradeSimulatorMock,
+      backtestRunRepositoryMock,
     );
 
     await useCase.execute({
@@ -166,5 +187,6 @@ describe('RunBacktestUseCase', () => {
       candle2,
       candle2,
     );
+    expect(backtestRunRepositoryMock.saveRun).toHaveBeenCalled();
   });
 });

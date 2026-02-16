@@ -190,6 +190,7 @@ describe('BacktestingController', () => {
     const getQueueOverviewUseCaseMock = { execute: jest.fn() } as any;
     const runBacktestUseCaseMock = {
       execute: jest.fn().mockResolvedValue({
+        runId: 'run-1',
         symbol: 'BTCUSDT',
         fromInterval: '1m',
         toInterval: '15m',
@@ -230,6 +231,7 @@ describe('BacktestingController', () => {
     });
 
     expect(runBacktestUseCaseMock.execute).toHaveBeenCalled();
+    expect(result).toHaveProperty('runId', 'run-1');
     expect(result).toHaveProperty('symbol', 'BTCUSDT');
     expect(result).toHaveProperty('metrics.totalTrades', 2);
   });

@@ -19,6 +19,11 @@ export {
   TRADE_SIMULATOR_TOKEN,
 } from './trade-simulator.interface';
 export {
+  type IBacktestRunRepository,
+  type SaveBacktestRunInput,
+  BACKTEST_RUN_REPOSITORY_TOKEN,
+} from './backtest-run-repository.interface';
+export {
   type IDownloadManager,
   type ImportBinanceJobResult,
   type ImportBinanceRequest,

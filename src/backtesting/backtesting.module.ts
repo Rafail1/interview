@@ -9,14 +9,17 @@ import { MARKET_DATA_REPOSITORY_TOKEN } from './domain/interfaces/market-data-re
 import { STRATEGY_EVALUATOR_TOKEN } from './domain/interfaces/strategy-evaluator.interface';
 import { STRUCTURE_DETECTOR_TOKEN } from './domain/interfaces/structure-detector.interface';
 import { TRADE_SIMULATOR_TOKEN } from './domain/interfaces/trade-simulator.interface';
+import { BACKTEST_RUN_REPOSITORY_TOKEN } from './domain/interfaces/backtest-run-repository.interface';
 import { BacktestingController } from './interfaces/http/backtesting.controller';
 import { BinanceDataDownloader } from './infrastructure/data-loaders/binance-data.downloader';
 import { MarketDataMapper } from './infrastructure/mappers/market-data.mapper';
+import { BacktestRunMapper } from './infrastructure/mappers/backtest-run.mapper';
 import { CandleAggregator } from './infrastructure/market-data/candle.aggregator';
 import { DownloadJobRepository } from './infrastructure/market-data/download-manager/download-job.repository';
 import { DownloadManager } from './infrastructure/market-data/download-manager/download-manager';
 import { TimeframeCacheService } from './infrastructure/market-data/timeframe-cache.service';
 import { MarketDataRepository } from './infrastructure/repositories/market-data.repository';
+import { BacktestRunRepository } from './infrastructure/repositories/backtest-run.repository';
 import { FvgDetector } from './infrastructure/signal-detection/fvg.detector';
 import { StrategyEvaluator } from './infrastructure/signal-detection/strategy.evaluator';
 import { StructureDetector } from './infrastructure/signal-detection/structure.detector';
@@ -33,6 +36,7 @@ import { LOGGER_TOKEN } from 'src/core/interfaces/logger.interface';
     GetImportJobStatusUseCase,
     GetImportQueueOverviewUseCase,
     RunBacktestUseCase,
+    BacktestRunMapper,
     MarketDataMapper,
     CandleAggregator,
     TimeframeCacheService,
@@ -62,6 +66,10 @@ import { LOGGER_TOKEN } from 'src/core/interfaces/logger.interface';
     {
       provide: TRADE_SIMULATOR_TOKEN,
       useClass: TradeSimulator,
+    },
+    {
+      provide: BACKTEST_RUN_REPOSITORY_TOKEN,
+      useClass: BacktestRunRepository,
     },
     {
       provide: DOWNLOAD_MANAGER_TOKEN,

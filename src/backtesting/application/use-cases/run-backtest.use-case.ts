@@ -1,5 +1,9 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { Candle } from 'src/backtesting/domain/entities/candle.entity';
+import {
+  BACKTEST_RUN_REPOSITORY_TOKEN,
+  type IBacktestRunRepository,
+} from 'src/backtesting/domain/interfaces/backtest-run-repository.interface';
 import { MetricsCalculator } from 'src/backtesting/infrastructure/trade-simulation/metrics.calculator';
 import { RunBacktestRequestDto } from 'src/backtesting/interfaces/dtos/run-backtest-request.dto';
 import {
@@ -27,6 +31,8 @@ export class RunBacktestUseCase {
     private readonly strategyEvaluator: IStrategyEvaluator,
     @Inject(TRADE_SIMULATOR_TOKEN)
     private readonly tradeSimulator: ITradeSimulator,
+    @Inject(BACKTEST_RUN_REPOSITORY_TOKEN)
+    private readonly backtestRunRepository: IBacktestRunRepository,
   ) {}
 
   public async execute(command: RunBacktestRequestDto) {
@@ -125,8 +131,36 @@ export class RunBacktestUseCase {
       closedTrades,
       command.initialBalance ?? 10_000,
     );
+    const runId = await this.backtestRunRepository.saveRun({
+      symbol: command.symbol,
+      interval: toInterval.toString(),
+      strategyVersion: 'fvg-bos-v1',
+      config: {
+        fromInterval: fromInterval.toString(),
+        toInterval: toInterval.toString(),
+        initialBalance: command.initialBalance ?? 10_000,
+        riskPercent: command.riskPercent ?? 2,
+        rewardRatio: command.rewardRatio ?? 2,
+      },
+      startTimeMs: start.toMs(),
+      endTimeMs: end.toMs(),
+      metrics: {
+        totalTrades: metrics.totalTrades,
+        winningTrades: metrics.winningTrades,
+        losingTrades: metrics.losingTrades,
+        winRate: metrics.winRate,
+        totalPnL: metrics.totalPnL,
+        maxDrawdown: metrics.maxDrawdown,
+        sharpeRatio: metrics.sharpeRatio,
+        profitFactor: metrics.profitFactor,
+        avgWin: metrics.avgWin,
+        avgLoss: metrics.avgLoss,
+      },
+      trades: closedTrades,
+    });
 
     return {
+      runId,
       symbol: command.symbol,
       fromInterval: fromInterval.toString(),
       toInterval: toInterval.toString(),

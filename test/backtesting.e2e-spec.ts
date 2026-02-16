@@ -272,6 +272,7 @@ describe('Backtesting (e2e)', () => {
 
   it('POST /backtesting/run returns backtest summary', async () => {
     runBacktestUseCaseMock.execute.mockResolvedValue({
+      runId: 'run-e2e-1',
       symbol: 'BTCUSDT',
       fromInterval: '1m',
       toInterval: '15m',
@@ -314,6 +315,7 @@ describe('Backtesting (e2e)', () => {
     expect(runBacktestUseCaseMock.execute).toHaveBeenCalledWith(
       expect.objectContaining(payload),
     );
+    expect(res.body).toHaveProperty('runId', 'run-e2e-1');
     expect(res.body).toHaveProperty('symbol', 'BTCUSDT');
     expect(res.body).toHaveProperty('metrics.totalTrades', 2);
   });
