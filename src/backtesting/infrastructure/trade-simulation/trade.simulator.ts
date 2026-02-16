@@ -8,18 +8,12 @@ import { RiskModel } from 'src/backtesting/domain/value-objects/risk-model.value
 
 @Injectable()
 export class TradeSimulator implements ITradeSimulator {
+  private static readonly DEFAULT_INITIAL_BALANCE = new Decimal(10_000);
   private openTrade: Trade | null = null;
   private closedTrades: Trade[] = [];
-  private readonly startingBalance: Decimal;
-  private accountBalance: Decimal;
-
-  constructor(initialBalance: Decimal | number = 10_000) {
-    this.startingBalance =
-      typeof initialBalance === 'number'
-        ? new Decimal(initialBalance)
-        : initialBalance;
-    this.accountBalance = this.startingBalance;
-  }
+  private readonly startingBalance: Decimal =
+    TradeSimulator.DEFAULT_INITIAL_BALANCE;
+  private accountBalance: Decimal = TradeSimulator.DEFAULT_INITIAL_BALANCE;
 
   public processSignal(signal: Signal, riskModel: RiskModel): Trade | null {
     const type = signal.getType();
