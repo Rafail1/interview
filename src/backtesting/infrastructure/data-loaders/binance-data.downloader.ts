@@ -2,7 +2,7 @@ import axios, { AxiosInstance } from 'axios';
 import { ConfigService } from '@nestjs/config';
 import { createHash } from 'crypto';
 import { createReadStream, existsSync, unlinkSync } from 'fs';
-import { mkdir } from 'fs/promises';
+import { mkdir, rename, writeFile } from 'fs/promises';
 import { join } from 'path';
 import { Inject, Injectable } from '@nestjs/common';
 import {
@@ -82,8 +82,7 @@ export class BinanceDataDownloader {
 
         // Write to temp file first
         const tempPath = `${filePath}.tmp`;
-        const fs = await import('fs/promises');
-        await fs.writeFile(tempPath, buffer);
+        await writeFile(tempPath, buffer);
 
         // Verify checksum
         const isValid = await this.verifyChecksumFile(
@@ -98,7 +97,7 @@ export class BinanceDataDownloader {
         }
 
         // Move temp file to final location
-        await fs.rename(tempPath, filePath);
+        await rename(tempPath, filePath);
         this.logger.log(`Successfully downloaded and verified: ${fileName}`);
         return filePath;
       } catch (error) {
