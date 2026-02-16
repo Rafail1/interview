@@ -147,15 +147,17 @@ export class DownloadManager implements IDownloadManager {
       DownloadManager.name,
     );
 
-    const zipPath = await this.downloader.downloadMonthlyZip(
-      request.symbol,
-      request.interval,
-      yearMonth,
-    );
-    const csvPath = await ZipExtractor.extractZip(zipPath);
-    const extractedDir = dirname(csvPath);
+    let extractedDir: string | null = null;
 
     try {
+      const zipPath = await this.downloader.downloadMonthlyZip(
+        request.symbol,
+        request.interval,
+        yearMonth,
+      );
+      const csvPath = await ZipExtractor.extractZip(zipPath);
+      extractedDir = dirname(csvPath);
+
       const candlesBatch: Candle[] = [];
       let lastSuccessfulTime: bigint | null = null;
 
@@ -185,7 +187,9 @@ export class DownloadManager implements IDownloadManager {
       await this.downloadJobRepository.incrementFailed(jobId);
       throw error;
     } finally {
-      ZipExtractor.cleanup(extractedDir);
+      if (extractedDir) {
+        ZipExtractor.cleanup(extractedDir);
+      }
     }
   }
 

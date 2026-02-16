@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -33,7 +34,17 @@ export class BacktestingController {
   public async importBinanceData(
     @Body() body: ImportBinanceDataRequestDto,
   ): Promise<ImportBinanceDataResponseDto> {
-    return this.importBinanceDataUseCase.execute(body);
+    try {
+      return await this.importBinanceDataUseCase.execute(body);
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        this.isImportRequestValidationError(error.message)
+      ) {
+        throw new BadRequestException(error.message);
+      }
+      throw error;
+    }
   }
 
   @Get('import/:jobId')
@@ -48,5 +59,13 @@ export class BacktestingController {
       throw new NotFoundException(`Import job not found: ${jobId}`);
     }
     return status;
+  }
+
+  private isImportRequestValidationError(message: string): boolean {
+    return (
+      message === 'startDate must be before or equal to endDate' ||
+      message === 'Date range cannot be in the future' ||
+      message.startsWith('Invalid timeframe:')
+    );
   }
 }

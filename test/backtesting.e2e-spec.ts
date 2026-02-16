@@ -1,0 +1,215 @@
+import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { Test, TestingModule } from '@nestjs/testing';
+import request from 'supertest';
+import { GetImportJobStatusUseCase } from '../src/backtesting/application/use-cases/get-import-job-status.use-case';
+import { ImportBinanceDataUseCase } from '../src/backtesting/application/use-cases/import-binance-data.use-case';
+import { BacktestingController } from '../src/backtesting/interfaces/http/backtesting.controller';
+
+describe('Backtesting (e2e)', () => {
+  let app: INestApplication;
+
+  const importUseCaseMock = {
+    execute: jest.fn(),
+  };
+
+  const getStatusUseCaseMock = {
+    execute: jest.fn(),
+  };
+
+  beforeAll(async () => {
+    const moduleFixture: TestingModule = await Test.createTestingModule({
+      controllers: [BacktestingController],
+      providers: [
+        {
+          provide: ImportBinanceDataUseCase,
+          useValue: importUseCaseMock,
+        },
+        {
+          provide: GetImportJobStatusUseCase,
+          useValue: getStatusUseCaseMock,
+        },
+      ],
+    }).compile();
+
+    app = moduleFixture.createNestApplication();
+    app.useGlobalPipes(
+      new ValidationPipe({
+        transform: true,
+        whitelist: true,
+        forbidNonWhitelisted: false,
+      }),
+    );
+    await app.init();
+  });
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  afterAll(async () => {
+    await app.close();
+  });
+
+  it('POST /backtesting/import returns queued job payload', async () => {
+    importUseCaseMock.execute.mockResolvedValue({
+      jobId: 'job-e2e-1',
+      status: 'pending',
+      filesQueued: 3,
+      downloadedCount: 0,
+      queuedPosition: 1,
+    });
+
+    const payload = {
+      symbol: 'BTCUSDT',
+      interval: '1m',
+      startDate: '2024-01-01T00:00:00.000Z',
+      endDate: '2024-03-31T23:59:59.999Z',
+      overwrite: false,
+    };
+
+    const res = await request(app.getHttpServer())
+      .post('/backtesting/import')
+      .send(payload)
+      .expect(201);
+
+    expect(importUseCaseMock.execute).toHaveBeenCalledWith(
+      expect.objectContaining(payload),
+    );
+    expect(res.body).toEqual({
+      jobId: 'job-e2e-1',
+      status: 'pending',
+      filesQueued: 3,
+      downloadedCount: 0,
+      queuedPosition: 1,
+    });
+  });
+
+  it('POST /backtesting/import rejects invalid payload', async () => {
+    const badPayload = {
+      symbol: 'btc-usdt',
+      interval: '1m',
+      startDate: 'not-a-date',
+      endDate: 'still-not-a-date',
+    };
+
+    await request(app.getHttpServer())
+      .post('/backtesting/import')
+      .send(badPayload)
+      .expect(400);
+
+    expect(importUseCaseMock.execute).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    {
+      name: 'startDate after endDate',
+      errorMessage: 'startDate must be before or equal to endDate',
+    },
+    {
+      name: 'future date range',
+      errorMessage: 'Date range cannot be in the future',
+    },
+  ])('POST /backtesting/import returns 400 for $name', async ({ errorMessage }) => {
+    importUseCaseMock.execute.mockRejectedValueOnce(new Error(errorMessage));
+
+    const payload = {
+      symbol: 'BTCUSDT',
+      interval: '1m',
+      startDate: '2024-01-01T00:00:00.000Z',
+      endDate: '2024-01-31T23:59:59.999Z',
+      overwrite: false,
+    };
+
+    const res = await request(app.getHttpServer())
+      .post('/backtesting/import')
+      .send(payload)
+      .expect(400);
+
+    expect(res.body).toHaveProperty('message', errorMessage);
+  });
+
+  it.each([
+    {
+      name: 'invalid symbol format',
+      payload: {
+        symbol: 'BTC-USDT',
+        interval: '1m',
+        startDate: '2024-01-01T00:00:00.000Z',
+        endDate: '2024-01-31T23:59:59.999Z',
+      },
+    },
+    {
+      name: 'missing symbol',
+      payload: {
+        interval: '1m',
+        startDate: '2024-01-01T00:00:00.000Z',
+        endDate: '2024-01-31T23:59:59.999Z',
+      },
+    },
+    {
+      name: 'missing interval',
+      payload: {
+        symbol: 'BTCUSDT',
+        startDate: '2024-01-01T00:00:00.000Z',
+        endDate: '2024-01-31T23:59:59.999Z',
+      },
+    },
+    {
+      name: 'missing startDate',
+      payload: {
+        symbol: 'BTCUSDT',
+        interval: '1m',
+        endDate: '2024-01-31T23:59:59.999Z',
+      },
+    },
+    {
+      name: 'missing endDate',
+      payload: {
+        symbol: 'BTCUSDT',
+        interval: '1m',
+        startDate: '2024-01-01T00:00:00.000Z',
+      },
+    },
+  ])('POST /backtesting/import rejects $name', async ({ payload }) => {
+    await request(app.getHttpServer())
+      .post('/backtesting/import')
+      .send(payload)
+      .expect(400);
+
+    expect(importUseCaseMock.execute).not.toHaveBeenCalled();
+  });
+
+  it('GET /backtesting/import/:jobId returns job status', async () => {
+    getStatusUseCaseMock.execute.mockResolvedValue({
+      jobId: 'job-e2e-2',
+      status: 'downloading',
+      queuedPosition: null,
+      symbol: 'BTCUSDT',
+      interval: '1m',
+      totalFiles: 3,
+      downloadedFiles: 1,
+      failedFiles: 0,
+      checksumValid: true,
+      errorMessage: null,
+      lastSuccessfulTime: '1704067319999',
+      createdAt: '2024-01-01T00:00:00.000Z',
+      updatedAt: '2024-01-01T00:10:00.000Z',
+    });
+
+    const res = await request(app.getHttpServer())
+      .get('/backtesting/import/job-e2e-2')
+      .expect(200);
+
+    expect(getStatusUseCaseMock.execute).toHaveBeenCalledWith('job-e2e-2');
+    expect(res.body).toHaveProperty('jobId', 'job-e2e-2');
+    expect(res.body).toHaveProperty('status', 'downloading');
+  });
+
+  it('GET /backtesting/import/:jobId returns 404 when job not found', async () => {
+    getStatusUseCaseMock.execute.mockResolvedValueOnce(null);
+
+    await request(app.getHttpServer())
+      .get('/backtesting/import/missing-job')
+      .expect(404);
+  });
+});

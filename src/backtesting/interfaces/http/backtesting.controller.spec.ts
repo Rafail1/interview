@@ -1,4 +1,4 @@
-import { NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { BacktestingController } from './backtesting.controller';
 import { ImportBinanceDataRequestDto } from '../dtos/import-binance-data-request.dto';
 
@@ -87,4 +87,35 @@ describe('BacktestingController', () => {
       NotFoundException,
     );
   });
+
+  it.each([
+    'startDate must be before or equal to endDate',
+    'Date range cannot be in the future',
+    'Invalid timeframe: 7m',
+  ])(
+    'importBinanceData maps semantic validation error "%s" to BadRequestException',
+    async (message) => {
+      const importUseCaseMock = {
+        execute: jest.fn().mockRejectedValue(new Error(message)),
+      } as any;
+      const getStatusUseCaseMock = { execute: jest.fn() } as any;
+
+      const controller = new BacktestingController(
+        importUseCaseMock,
+        getStatusUseCaseMock,
+      );
+
+      const dto: ImportBinanceDataRequestDto = {
+        symbol: 'BTCUSDT',
+        interval: '1m',
+        startDate: '2024-01-01T00:00:00.000Z',
+        endDate: '2024-01-31T23:59:59.999Z',
+        overwrite: false,
+      };
+
+      await expect(controller.importBinanceData(dto)).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+    },
+  );
 });
