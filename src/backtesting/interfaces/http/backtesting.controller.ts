@@ -6,6 +6,7 @@ import {
   NotFoundException,
   Param,
   Post,
+  Query,
 } from '@nestjs/common';
 import {
   ApiCreatedResponse,
@@ -18,12 +19,15 @@ import { GetImportJobStatusUseCase } from 'src/backtesting/application/use-cases
 import { GetImportQueueOverviewUseCase } from 'src/backtesting/application/use-cases/get-import-queue-overview.use-case';
 import { ImportBinanceDataUseCase } from 'src/backtesting/application/use-cases/import-binance-data.use-case';
 import { GetBacktestRunUseCase } from 'src/backtesting/application/use-cases/get-backtest-run.use-case';
+import { ListBacktestRunsUseCase } from 'src/backtesting/application/use-cases/list-backtest-runs.use-case';
 import { RunBacktestUseCase } from 'src/backtesting/application/use-cases/run-backtest.use-case';
 import { BacktestRunResponseDto } from '../dtos/backtest-run-response.dto';
 import { ImportBinanceDataRequestDto } from '../dtos/import-binance-data-request.dto';
 import { ImportBinanceDataResponseDto } from '../dtos/import-binance-data-response.dto';
 import { ImportJobStatusResponseDto } from '../dtos/import-job-status-response.dto';
 import { ImportQueueOverviewResponseDto } from '../dtos/import-queue-overview-response.dto';
+import { ListBacktestRunsQueryDto } from '../dtos/list-backtest-runs-query.dto';
+import { ListBacktestRunsResponseDto } from '../dtos/list-backtest-runs-response.dto';
 import { RunBacktestRequestDto } from '../dtos/run-backtest-request.dto';
 import { RunBacktestResponseDto } from '../dtos/run-backtest-response.dto';
 
@@ -36,6 +40,7 @@ export class BacktestingController {
     private readonly getImportQueueOverviewUseCase: GetImportQueueOverviewUseCase,
     private readonly runBacktestUseCase: RunBacktestUseCase,
     private readonly getBacktestRunUseCase: GetBacktestRunUseCase,
+    private readonly listBacktestRunsUseCase: ListBacktestRunsUseCase,
   ) {}
 
   @Post('import')
@@ -91,6 +96,22 @@ export class BacktestingController {
     return status;
   }
 
+  @Get('runs')
+  @ApiOperation({ summary: 'List persisted backtest runs' })
+  @ApiOkResponse({ type: ListBacktestRunsResponseDto })
+  public async listBacktestRuns(
+    @Query() query: ListBacktestRunsQueryDto,
+  ): Promise<ListBacktestRunsResponseDto> {
+    try {
+      return await this.listBacktestRunsUseCase.execute(query);
+    } catch (error) {
+      if (error instanceof Error && this.isClientInputError(error.message)) {
+        throw new BadRequestException(error.message);
+      }
+      throw error;
+    }
+  }
+
   @Get('run/:runId')
   @ApiOperation({ summary: 'Get persisted backtest run by ID' })
   @ApiOkResponse({ type: BacktestRunResponseDto })
@@ -108,6 +129,7 @@ export class BacktestingController {
   private isClientInputError(message: string): boolean {
     return (
       message === 'startDate must be before or equal to endDate' ||
+      message === 'fromDate must be before or equal to toDate' ||
       message === 'Date range cannot be in the future' ||
       message.startsWith('Invalid timeframe:')
     );

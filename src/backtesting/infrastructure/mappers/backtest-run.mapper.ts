@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { BacktestRun, BacktestTrade, Prisma } from '@prisma/client';
 import {
+  BacktestRunListItemView,
   BacktestRunView,
   BacktestTradeView,
   SaveBacktestRunInput,
@@ -66,6 +67,21 @@ export class BacktestRunMapper {
       avgLoss: run.avgLoss,
       createdAt: run.createdAt,
       trades: run.trades.map((trade) => this.toDomainTrade(trade)),
+    };
+  }
+
+  public toDomainRunListItem(run: BacktestRun): BacktestRunListItemView {
+    return {
+      id: run.id,
+      symbol: run.symbol,
+      interval: run.interval,
+      strategyVersion: run.strategyVersion,
+      startTime: run.startTime.toString(),
+      endTime: run.endTime.toString(),
+      totalTrades: run.totalTrades,
+      winRate: run.winRate,
+      totalPnL: run.totalPnL,
+      createdAt: run.createdAt,
     };
   }
 

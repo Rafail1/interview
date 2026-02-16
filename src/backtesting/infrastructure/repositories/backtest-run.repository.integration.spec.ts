@@ -104,4 +104,101 @@ maybeDescribe('BacktestRunRepository integration', () => {
   it('returns null when run does not exist', async () => {
     await expect(repository.findById(randomUUID())).resolves.toBeNull();
   });
+
+  it('sorts listRuns by totalPnL numerically', async () => {
+    const symbol = `TST${Date.now()}`;
+
+    const runIds = await Promise.all([
+      repository.saveRun({
+        symbol,
+        interval: '15m',
+        strategyVersion: 'fvg-bos-v1',
+        config: {},
+        startTimeMs: 1704067200000n,
+        endTimeMs: 1704067319999n,
+        metrics: {
+          totalTrades: 0,
+          winningTrades: 0,
+          losingTrades: 0,
+          winRate: '0',
+          totalPnL: '100.10',
+          maxDrawdown: '0',
+          sharpeRatio: '0',
+          profitFactor: '0',
+          avgWin: '0',
+          avgLoss: '0',
+        },
+        trades: [],
+      }),
+      repository.saveRun({
+        symbol,
+        interval: '15m',
+        strategyVersion: 'fvg-bos-v1',
+        config: {},
+        startTimeMs: 1704067200000n,
+        endTimeMs: 1704067319999n,
+        metrics: {
+          totalTrades: 0,
+          winningTrades: 0,
+          losingTrades: 0,
+          winRate: '0',
+          totalPnL: '9.25',
+          maxDrawdown: '0',
+          sharpeRatio: '0',
+          profitFactor: '0',
+          avgWin: '0',
+          avgLoss: '0',
+        },
+        trades: [],
+      }),
+      repository.saveRun({
+        symbol,
+        interval: '15m',
+        strategyVersion: 'fvg-bos-v1',
+        config: {},
+        startTimeMs: 1704067200000n,
+        endTimeMs: 1704067319999n,
+        metrics: {
+          totalTrades: 0,
+          winningTrades: 0,
+          losingTrades: 0,
+          winRate: '0',
+          totalPnL: '-1.5',
+          maxDrawdown: '0',
+          sharpeRatio: '0',
+          profitFactor: '0',
+          avgWin: '0',
+          avgLoss: '0',
+        },
+        trades: [],
+      }),
+    ]);
+    createdRunIds.push(...runIds);
+
+    const asc = await repository.listRuns({
+      sortBy: 'totalPnL',
+      sortOrder: 'asc',
+      symbol,
+      page: 1,
+      limit: 10,
+    });
+    const desc = await repository.listRuns({
+      sortBy: 'totalPnL',
+      sortOrder: 'desc',
+      symbol,
+      page: 1,
+      limit: 10,
+    });
+
+    expect(asc.items.map((item) => item.totalPnL)).toEqual([
+      '-1.5',
+      '9.25',
+      '100.10',
+    ]);
+    expect(desc.items.map((item) => item.totalPnL)).toEqual([
+      '100.10',
+      '9.25',
+      '-1.5',
+    ]);
+  });
 });

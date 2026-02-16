@@ -5,6 +5,7 @@ import { GetImportJobStatusUseCase } from '../src/backtesting/application/use-ca
 import { GetImportQueueOverviewUseCase } from '../src/backtesting/application/use-cases/get-import-queue-overview.use-case';
 import { ImportBinanceDataUseCase } from '../src/backtesting/application/use-cases/import-binance-data.use-case';
 import { GetBacktestRunUseCase } from '../src/backtesting/application/use-cases/get-backtest-run.use-case';
+import { ListBacktestRunsUseCase } from '../src/backtesting/application/use-cases/list-backtest-runs.use-case';
 import { RunBacktestUseCase } from '../src/backtesting/application/use-cases/run-backtest.use-case';
 import { BacktestingController } from '../src/backtesting/interfaces/http/backtesting.controller';
 
@@ -31,6 +32,10 @@ describe('Backtesting (e2e)', () => {
     execute: jest.fn(),
   };
 
+  const listBacktestRunsUseCaseMock = {
+    execute: jest.fn(),
+  };
+
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       controllers: [BacktestingController],
@@ -54,6 +59,10 @@ describe('Backtesting (e2e)', () => {
         {
           provide: GetBacktestRunUseCase,
           useValue: getBacktestRunUseCaseMock,
+        },
+        {
+          provide: ListBacktestRunsUseCase,
+          useValue: listBacktestRunsUseCaseMock,
         },
       ],
     }).compile();
@@ -367,6 +376,61 @@ describe('Backtesting (e2e)', () => {
     await request(app.getHttpServer())
       .get('/backtesting/run/missing-run')
       .expect(404);
+  });
+
+  it('GET /backtesting/runs returns paginated run list', async () => {
+    listBacktestRunsUseCaseMock.execute.mockResolvedValue({
+      items: [
+        {
+          id: 'run-e2e-2',
+          symbol: 'ETHUSDT',
+          interval: '15m',
+          strategyVersion: 'fvg-bos-v1',
+          startTime: '1704067200000',
+          endTime: '1706745599000',
+          totalTrades: 3,
+          winRate: 66.67,
+          totalPnL: '25.10',
+          createdAt: '2024-02-01T00:00:00.000Z',
+        },
+      ],
+      page: 2,
+      limit: 10,
+      total: 25,
+    });
+
+    const res = await request(app.getHttpServer())
+      .get(
+        '/backtesting/runs?symbol=ETHUSDT&interval=15m&sortBy=winRate&sortOrder=asc&page=2&limit=10',
+      )
+      .expect(200);
+
+    expect(listBacktestRunsUseCaseMock.execute).toHaveBeenCalledWith({
+      symbol: 'ETHUSDT',
+      interval: '15m',
+      sortBy: 'winRate',
+      sortOrder: 'asc',
+      page: 2,
+      limit: 10,
+    });
+    expect(res.body).toHaveProperty('total', 25);
+    expect(res.body.items[0]).toHaveProperty('id', 'run-e2e-2');
+  });
+
+  it('GET /backtesting/runs returns 400 when query is invalid', async () => {
+    await request(app.getHttpServer())
+      .get('/backtesting/runs?page=0&limit=-1')
+      .expect(400);
+
+    expect(listBacktestRunsUseCaseMock.execute).not.toHaveBeenCalled();
+  });
+
+  it('GET /backtesting/runs returns 400 for invalid sortBy', async () => {
+    await request(app.getHttpServer())
+      .get('/backtesting/runs?sortBy=pnl&sortOrder=asc')
+      .expect(400);
+
+    expect(listBacktestRunsUseCaseMock.execute).not.toHaveBeenCalled();
   });
 
   it('POST /backtesting/run rejects invalid payload', async () => {
