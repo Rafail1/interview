@@ -102,6 +102,9 @@ export class BacktestRunMapper {
       strategyVersion: run.strategyVersion,
       status: run.status as BacktestRunView['status'],
       errorMessage: run.errorMessage,
+      processedCandles: run.processedCandles,
+      generatedSignals: run.generatedSignals,
+      cancelRequestedAt: run.cancelRequestedAt,
       config: run.config as Record<string, unknown>,
       startTime: run.startTime.toString(),
       endTime: run.endTime.toString(),
@@ -118,6 +121,7 @@ export class BacktestRunMapper {
       signalsCount: run._count.signals,
       equityPointsCount: run._count.equityPoints,
       createdAt: run.createdAt,
+      updatedAt: run.updatedAt,
       trades: run.trades.map((trade) => this.toDomainTrade(trade)),
     };
   }
@@ -130,12 +134,16 @@ export class BacktestRunMapper {
       strategyVersion: run.strategyVersion,
       status: run.status as BacktestRunListItemView['status'],
       errorMessage: run.errorMessage,
+      processedCandles: run.processedCandles,
+      generatedSignals: run.generatedSignals,
+      cancelRequestedAt: run.cancelRequestedAt,
       startTime: run.startTime.toString(),
       endTime: run.endTime.toString(),
       totalTrades: run.totalTrades,
       winRate: run.winRate,
       totalPnL: run.totalPnL,
       createdAt: run.createdAt,
+      updatedAt: run.updatedAt,
     };
   }
 
@@ -154,6 +162,9 @@ export class BacktestRunMapper {
       strategyVersion: run.strategyVersion,
       status: run.status as BacktestRunSummaryView['status'],
       errorMessage: run.errorMessage,
+      processedCandles: run.processedCandles,
+      generatedSignals: run.generatedSignals,
+      cancelRequestedAt: run.cancelRequestedAt,
       startTime: run.startTime.toString(),
       endTime: run.endTime.toString(),
       totalTrades: run.totalTrades,
@@ -169,6 +180,7 @@ export class BacktestRunMapper {
       lastEquity: lastPoint?.equity ?? null,
       lastDrawdown: lastPoint?.drawdown ?? null,
       createdAt: run.createdAt,
+      updatedAt: run.updatedAt,
     };
   }
 

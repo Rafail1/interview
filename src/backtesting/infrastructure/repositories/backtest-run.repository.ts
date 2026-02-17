@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import {
+  BacktestActiveRunView,
   BacktestEquityPointPersistenceInput,
   BacktestSignalPersistenceInput,
   FinalizeBacktestRunInput,
@@ -41,6 +42,9 @@ export class BacktestRunRepository implements IBacktestRunRepository {
         }),
         status: 'running',
         errorMessage: null,
+        processedCandles: 0,
+        generatedSignals: 0,
+        cancelRequestedAt: null,
       },
       select: { id: true },
     });
@@ -95,6 +99,7 @@ export class BacktestRunRepository implements IBacktestRunRepository {
       data: {
         status: 'cancelled',
         errorMessage: null,
+        cancelRequestedAt: new Date(),
       },
     });
 
@@ -118,6 +123,20 @@ export class BacktestRunRepository implements IBacktestRunRepository {
     return run?.status === 'cancelled';
   }
 
+  public async updateRunProgress(
+    runId: string,
+    processedCandles: number,
+    generatedSignals: number,
+  ): Promise<void> {
+    await this.prisma.backtestRun.update({
+      where: { id: runId },
+      data: {
+        processedCandles,
+        generatedSignals,
+      },
+    });
+  }
+
   public async finalizeRun(input: FinalizeBacktestRunInput): Promise<void> {
     const tradeRows = this.backtestRunMapper.toPersistenceTradesBatch(
       input.trades,
@@ -129,6 +148,9 @@ export class BacktestRunRepository implements IBacktestRunRepository {
         data: {
           status: 'completed',
           errorMessage: null,
+          cancelRequestedAt: null,
+          processedCandles: input.processedCandles,
+          generatedSignals: input.generatedSignals,
           totalTrades: input.metrics.totalTrades,
           winningTrades: input.metrics.winningTrades,
           losingTrades: input.metrics.losingTrades,
@@ -174,6 +196,9 @@ export class BacktestRunRepository implements IBacktestRunRepository {
         ...this.backtestRunMapper.toPersistenceRun(input),
         status: 'completed',
         errorMessage: null,
+        processedCandles: 0,
+        generatedSignals: 0,
+        cancelRequestedAt: null,
         trades: {
           create: this.backtestRunMapper.toPersistenceTrades(input),
         },
@@ -297,12 +322,16 @@ export class BacktestRunRepository implements IBacktestRunRepository {
             strategyVersion: string;
             status: string;
             errorMessage: string | null;
+            processedCandles: number;
+            generatedSignals: number;
+            cancelRequestedAt: Date | null;
             startTime: bigint | number | string;
             endTime: bigint | number | string;
             totalTrades: number;
             winRate: number;
             totalPnL: string;
             createdAt: Date;
+            updatedAt: Date;
           }>
         >(Prisma.sql`
           SELECT
@@ -312,12 +341,16 @@ export class BacktestRunRepository implements IBacktestRunRepository {
             "strategyVersion",
             "status",
             "errorMessage",
+            "processedCandles",
+            "generatedSignals",
+            "cancelRequestedAt",
             "startTime",
             "endTime",
             "totalTrades",
             "winRate",
             "totalPnL",
             "createdAt"
+            ,"updatedAt"
           FROM "backtest_runs"
           ${whereSql}
           ORDER BY CAST("totalPnL" AS DOUBLE PRECISION) ${sortDirection}, "createdAt" DESC
@@ -339,12 +372,16 @@ export class BacktestRunRepository implements IBacktestRunRepository {
             | 'failed'
             | 'cancelled',
           errorMessage: row.errorMessage,
+          processedCandles: row.processedCandles,
+          generatedSignals: row.generatedSignals,
+          cancelRequestedAt: row.cancelRequestedAt,
           startTime: row.startTime.toString(),
           endTime: row.endTime.toString(),
           totalTrades: row.totalTrades,
           winRate: row.winRate,
           totalPnL: row.totalPnL,
           createdAt: row.createdAt,
+          updatedAt: row.updatedAt,
         })),
         page: input.page,
         limit: input.limit,
@@ -501,5 +538,47 @@ export class BacktestRunRepository implements IBacktestRunRepository {
         ? `${lastItem.timestamp.toString()}:${lastItem.id}`
         : null,
     };
+  }
+
+  public async listActiveRuns(): Promise<BacktestActiveRunView[]> {
+    const runs = await this.prisma.backtestRun.findMany({
+      where: {
+        status: {
+          in: ['pending', 'running'],
+        },
+      },
+      orderBy: {
+        updatedAt: 'desc',
+      },
+      select: {
+        id: true,
+        symbol: true,
+        interval: true,
+        strategyVersion: true,
+        status: true,
+        processedCandles: true,
+        generatedSignals: true,
+        startTime: true,
+        endTime: true,
+        createdAt: true,
+        updatedAt: true,
+        cancelRequestedAt: true,
+      },
+    });
+
+    return runs.map((run) => ({
+      id: run.id,
+      symbol: run.symbol,
+      interval: run.interval,
+      strategyVersion: run.strategyVersion,
+      status: run.status as BacktestActiveRunView['status'],
+      processedCandles: run.processedCandles,
+      generatedSignals: run.generatedSignals,
+      startTime: run.startTime.toString(),
+      endTime: run.endTime.toString(),
+      createdAt: run.createdAt,
+      updatedAt: run.updatedAt,
+      cancelRequestedAt: run.cancelRequestedAt,
+    }));
   }
 }

@@ -87,6 +87,7 @@ describe('RunBacktestUseCase', () => {
       appendEquityPoints: jest.fn().mockResolvedValue(undefined),
       cancelRun: jest.fn().mockResolvedValue(true),
       isRunCancelled: jest.fn().mockResolvedValue(false),
+      updateRunProgress: jest.fn().mockResolvedValue(undefined),
       finalizeRun: jest.fn().mockResolvedValue(undefined),
       failRun: jest.fn().mockResolvedValue(undefined),
     } as any;
@@ -214,6 +215,7 @@ describe('RunBacktestUseCase', () => {
       appendEquityPoints: jest.fn().mockResolvedValue(undefined),
       cancelRun: jest.fn().mockResolvedValue(true),
       isRunCancelled: jest.fn().mockResolvedValue(false),
+      updateRunProgress: jest.fn().mockResolvedValue(undefined),
       finalizeRun: jest.fn().mockResolvedValue(undefined),
       failRun: jest.fn().mockResolvedValue(undefined),
     } as any;
@@ -279,6 +281,7 @@ describe('RunBacktestUseCase', () => {
       appendEquityPoints: jest.fn().mockResolvedValue(undefined),
       cancelRun: jest.fn().mockResolvedValue(true),
       isRunCancelled: jest.fn().mockResolvedValue(false),
+      updateRunProgress: jest.fn().mockResolvedValue(undefined),
       finalizeRun: jest.fn().mockResolvedValue(undefined),
       failRun: jest.fn().mockResolvedValue(undefined),
     } as any;
@@ -338,6 +341,7 @@ describe('RunBacktestUseCase', () => {
       appendEquityPoints: jest.fn().mockResolvedValue(undefined),
       cancelRun: jest.fn().mockResolvedValue(true),
       isRunCancelled: jest.fn().mockResolvedValue(false),
+      updateRunProgress: jest.fn().mockResolvedValue(undefined),
       finalizeRun: jest.fn().mockResolvedValue(undefined),
       failRun: jest.fn().mockResolvedValue(undefined),
     } as any;
@@ -400,6 +404,7 @@ describe('RunBacktestUseCase', () => {
       appendEquityPoints: jest.fn().mockResolvedValue(undefined),
       cancelRun: jest.fn().mockResolvedValue(true),
       isRunCancelled: jest.fn().mockResolvedValue(true),
+      updateRunProgress: jest.fn().mockResolvedValue(undefined),
       finalizeRun: jest.fn().mockResolvedValue(undefined),
       failRun: jest.fn().mockResolvedValue(undefined),
     } as any;

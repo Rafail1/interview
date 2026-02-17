@@ -60,6 +60,8 @@ export type BacktestEquityPointPersistenceInput = {
 
 export type FinalizeBacktestRunInput = {
   runId: string;
+  processedCandles: number;
+  generatedSignals: number;
   metrics: SaveBacktestRunInput['metrics'];
   trades: Trade[];
 };
@@ -85,6 +87,9 @@ export type BacktestRunView = {
   strategyVersion: string;
   status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
   errorMessage: string | null;
+  processedCandles: number;
+  generatedSignals: number;
+  cancelRequestedAt: Date | null;
   config: Record<string, unknown>;
   startTime: string;
   endTime: string;
@@ -101,6 +106,7 @@ export type BacktestRunView = {
   signalsCount: number;
   equityPointsCount: number;
   createdAt: Date;
+  updatedAt: Date;
   trades: BacktestTradeView[];
 };
 
@@ -122,12 +128,16 @@ export type BacktestRunListItemView = {
   strategyVersion: string;
   status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
   errorMessage: string | null;
+  processedCandles: number;
+  generatedSignals: number;
+  cancelRequestedAt: Date | null;
   startTime: string;
   endTime: string;
   totalTrades: number;
   winRate: number;
   totalPnL: string;
   createdAt: Date;
+  updatedAt: Date;
 };
 
 export type BacktestRunListView = {
@@ -185,6 +195,9 @@ export type BacktestRunSummaryView = {
   strategyVersion: string;
   status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
   errorMessage: string | null;
+  processedCandles: number;
+  generatedSignals: number;
+  cancelRequestedAt: Date | null;
   startTime: string;
   endTime: string;
   totalTrades: number;
@@ -200,6 +213,22 @@ export type BacktestRunSummaryView = {
   lastEquity: string | null;
   lastDrawdown: string | null;
   createdAt: Date;
+  updatedAt: Date;
+};
+
+export type BacktestActiveRunView = {
+  id: string;
+  symbol: string;
+  interval: string;
+  strategyVersion: string;
+  status: 'pending' | 'running';
+  processedCandles: number;
+  generatedSignals: number;
+  startTime: string;
+  endTime: string;
+  createdAt: Date;
+  updatedAt: Date;
+  cancelRequestedAt: Date | null;
 };
 
 export interface IBacktestRunRepository {
@@ -214,6 +243,11 @@ export interface IBacktestRunRepository {
   ): Promise<void>;
   cancelRun(runId: string): Promise<boolean>;
   isRunCancelled(runId: string): Promise<boolean>;
+  updateRunProgress(
+    runId: string,
+    processedCandles: number,
+    generatedSignals: number,
+  ): Promise<void>;
   finalizeRun(input: FinalizeBacktestRunInput): Promise<void>;
   failRun(runId: string, errorMessage: string): Promise<void>;
   saveRun(input: SaveBacktestRunInput): Promise<string>;
@@ -226,6 +260,7 @@ export interface IBacktestRunRepository {
   findEquityByRunId(
     input: GetBacktestRunSeriesInput,
   ): Promise<BacktestEquityPointListView | null>;
+  listActiveRuns(): Promise<BacktestActiveRunView[]>;
 }
 
 export const BACKTEST_RUN_REPOSITORY_TOKEN = Symbol('IBacktestRunRepository');

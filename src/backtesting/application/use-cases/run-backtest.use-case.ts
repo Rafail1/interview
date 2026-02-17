@@ -152,6 +152,11 @@ export class RunBacktestUseCase {
         }
 
         if (processedCandles % this.progressLogEvery === 0) {
+          await this.backtestRunRepository.updateRunProgress(
+            runId,
+            processedCandles,
+            generatedSignals,
+          );
           this.logger.log(
             `Progress processedCandles=${processedCandles} generatedSignals=${generatedSignals}`,
             RunBacktestUseCase.LOG_CONTEXT,
@@ -241,6 +246,11 @@ export class RunBacktestUseCase {
         wasCancelled ||
         (await this.backtestRunRepository.isRunCancelled(runId))
       ) {
+        await this.backtestRunRepository.updateRunProgress(
+          runId,
+          processedCandles,
+          generatedSignals,
+        );
         await this.backtestRunRepository.cancelRun(runId);
         this.logger.warn(
           `Cancelled backtest runId=${runId} processedCandles=${processedCandles} generatedSignals=${generatedSignals}`,
@@ -260,6 +270,8 @@ export class RunBacktestUseCase {
 
       await this.backtestRunRepository.finalizeRun({
         runId,
+        processedCandles,
+        generatedSignals,
         metrics: {
           totalTrades: metrics.totalTrades,
           winningTrades: metrics.winningTrades,

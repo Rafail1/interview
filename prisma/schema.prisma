@@ -73,6 +73,9 @@ model BacktestRun {
   strategyVersion       String   // e.g., "fvg-bos-v1"
   status                String   @default("pending") // pending, running, completed, failed, cancelled
   errorMessage          String?
+  processedCandles      Int      @default(0)
+  generatedSignals      Int      @default(0)
+  cancelRequestedAt     DateTime?
   config                Json     // BacktestConfig serialized
   startTime             BigInt   // ms
   endTime               BigInt   // ms
@@ -90,8 +93,10 @@ model BacktestRun {
   signals               SignalEvent[]
   equityPoints          EquityPoint[]
   createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 
   @@index([symbol, strategyVersion, createdAt])
+  @@index([status, updatedAt])
   @@map("backtest_runs")
 }
 

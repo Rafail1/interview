@@ -174,6 +174,8 @@ maybeDescribe('BacktestRunRepository integration', () => {
     ]);
     await repository.finalizeRun({
       runId,
+      processedCandles: 120,
+      generatedSignals: 8,
       metrics: {
         totalTrades: 1,
         winningTrades: 1,
@@ -195,6 +197,8 @@ maybeDescribe('BacktestRunRepository integration', () => {
     expect(run).toHaveProperty('id', runId);
     expect(run).toHaveProperty('status', 'completed');
     expect(run).toHaveProperty('errorMessage', null);
+    expect(run).toHaveProperty('processedCandles', 120);
+    expect(run).toHaveProperty('generatedSignals', 8);
     expect(run).toHaveProperty('totalTrades', 1);
     expect(run).toHaveProperty('signalsCount', 1);
     expect(run).toHaveProperty('equityPointsCount', 2);
@@ -257,6 +261,35 @@ maybeDescribe('BacktestRunRepository integration', () => {
     const run = await repository.findById(runId);
     expect(run).not.toBeNull();
     expect(run).toHaveProperty('status', 'cancelled');
+    expect(run?.cancelRequestedAt).not.toBeNull();
+  });
+
+  it('lists active runs with progress fields', async () => {
+    const runId = await repository.startRun({
+      symbol: 'BTCUSDT',
+      interval: '15m',
+      strategyVersion: 'fvg-bos-v1',
+      config: {
+        fromInterval: '1m',
+        toInterval: '15m',
+      },
+      startTimeMs: 1704067200000n,
+      endTimeMs: 1704067319999n,
+    });
+    createdRunIds.push(runId);
+
+    await repository.updateRunProgress(runId, 2500, 73);
+    const active = await repository.listActiveRuns();
+    const item = active.find((entry) => entry.id === runId);
+
+    expect(item).toBeDefined();
+    expect(item).toMatchObject({
+      id: runId,
+      status: 'running',
+      processedCandles: 2500,
+      generatedSignals: 73,
+    });
+    expect(item?.updatedAt).toBeInstanceOf(Date);
   });
 
   it('sorts listRuns by totalPnL numerically', async () => {

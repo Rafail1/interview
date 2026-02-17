@@ -25,6 +25,7 @@ export {
   type BacktestRunListItemView,
   type BacktestRunListView,
   type BacktestRunSummaryView,
+  type BacktestActiveRunView,
   type BacktestSignalEventListView,
   type BacktestSignalEventView,
   type BacktestRunView,

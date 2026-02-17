@@ -24,6 +24,7 @@ import { GetBacktestRunSummaryUseCase } from 'src/backtesting/application/use-ca
 import { GetBacktestRunSignalsUseCase } from 'src/backtesting/application/use-cases/get-backtest-run-signals.use-case';
 import { GetBacktestRunEquityUseCase } from 'src/backtesting/application/use-cases/get-backtest-run-equity.use-case';
 import { ListBacktestRunsUseCase } from 'src/backtesting/application/use-cases/list-backtest-runs.use-case';
+import { ListActiveBacktestRunsUseCase } from 'src/backtesting/application/use-cases/list-active-backtest-runs.use-case';
 import { RunBacktestUseCase } from 'src/backtesting/application/use-cases/run-backtest.use-case';
 import { BacktestRunEquityResponseDto } from '../dtos/backtest-run-equity-response.dto';
 import { BacktestingHealthResponseDto } from '../dtos/backtesting-health-response.dto';
@@ -38,6 +39,7 @@ import { ImportJobStatusResponseDto } from '../dtos/import-job-status-response.d
 import { ImportQueueOverviewResponseDto } from '../dtos/import-queue-overview-response.dto';
 import { ListBacktestRunsQueryDto } from '../dtos/list-backtest-runs-query.dto';
 import { ListBacktestRunsResponseDto } from '../dtos/list-backtest-runs-response.dto';
+import { ListActiveBacktestRunsResponseDto } from '../dtos/list-active-backtest-runs-response.dto';
 import { RunBacktestRequestDto } from '../dtos/run-backtest-request.dto';
 import { RunBacktestResponseDto } from '../dtos/run-backtest-response.dto';
 
@@ -55,6 +57,7 @@ export class BacktestingController {
     private readonly getBacktestRunSignalsUseCase: GetBacktestRunSignalsUseCase,
     private readonly getBacktestRunEquityUseCase: GetBacktestRunEquityUseCase,
     private readonly listBacktestRunsUseCase: ListBacktestRunsUseCase,
+    private readonly listActiveBacktestRunsUseCase: ListActiveBacktestRunsUseCase,
   ) {}
 
   @Get('health')
@@ -149,6 +152,13 @@ export class BacktestingController {
       }
       throw error;
     }
+  }
+
+  @Get('runs/active')
+  @ApiOperation({ summary: 'List active backtest runs (pending/running)' })
+  @ApiOkResponse({ type: ListActiveBacktestRunsResponseDto })
+  public async listActiveBacktestRuns(): Promise<ListActiveBacktestRunsResponseDto> {
+    return this.listActiveBacktestRunsUseCase.execute();
   }
 
   @Get('run/:runId')

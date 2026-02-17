@@ -10,6 +10,7 @@ import { GetBacktestRunSummaryUseCase } from '../src/backtesting/application/use
 import { GetBacktestRunSignalsUseCase } from '../src/backtesting/application/use-cases/get-backtest-run-signals.use-case';
 import { GetBacktestRunEquityUseCase } from '../src/backtesting/application/use-cases/get-backtest-run-equity.use-case';
 import { ListBacktestRunsUseCase } from '../src/backtesting/application/use-cases/list-backtest-runs.use-case';
+import { ListActiveBacktestRunsUseCase } from '../src/backtesting/application/use-cases/list-active-backtest-runs.use-case';
 import { RunBacktestUseCase } from '../src/backtesting/application/use-cases/run-backtest.use-case';
 import { BacktestingController } from '../src/backtesting/interfaces/http/backtesting.controller';
 
@@ -56,6 +57,10 @@ describe('Backtesting (e2e)', () => {
     execute: jest.fn(),
   };
 
+  const listActiveBacktestRunsUseCaseMock = {
+    execute: jest.fn(),
+  };
+
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       controllers: [BacktestingController],
@@ -99,6 +104,10 @@ describe('Backtesting (e2e)', () => {
         {
           provide: ListBacktestRunsUseCase,
           useValue: listBacktestRunsUseCaseMock,
+        },
+        {
+          provide: ListActiveBacktestRunsUseCase,
+          useValue: listActiveBacktestRunsUseCaseMock,
         },
       ],
     }).compile();
@@ -332,6 +341,35 @@ describe('Backtesting (e2e)', () => {
         },
       ],
     });
+  });
+
+  it('GET /backtesting/runs/active returns active run list', async () => {
+    listActiveBacktestRunsUseCaseMock.execute.mockResolvedValue({
+      items: [
+        {
+          id: 'run-active-1',
+          symbol: 'BTCUSDT',
+          interval: '15m',
+          strategyVersion: 'fvg-bos-v1',
+          status: 'running',
+          processedCandles: 5000,
+          generatedSignals: 150,
+          startTime: '1704067200000',
+          endTime: '1706745599000',
+          createdAt: '2024-02-01T00:00:00.000Z',
+          updatedAt: '2024-02-01T00:10:00.000Z',
+          cancelRequestedAt: null,
+        },
+      ],
+    });
+
+    const res = await request(app.getHttpServer())
+      .get('/backtesting/runs/active')
+      .expect(200);
+
+    expect(listActiveBacktestRunsUseCaseMock.execute).toHaveBeenCalled();
+    expect(res.body.items).toHaveLength(1);
+    expect(res.body.items[0]).toHaveProperty('status', 'running');
   });
 
   it('POST /backtesting/run returns backtest summary', async () => {

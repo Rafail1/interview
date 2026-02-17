@@ -13,6 +13,7 @@ type UseCaseMocks = {
   getBacktestRunSignalsUseCaseMock: { execute: jest.Mock };
   getBacktestRunEquityUseCaseMock: { execute: jest.Mock };
   listBacktestRunsUseCaseMock: { execute: jest.Mock };
+  listActiveBacktestRunsUseCaseMock: { execute: jest.Mock };
 };
 
 function makeController(overrides?: Partial<UseCaseMocks>) {
@@ -27,6 +28,7 @@ function makeController(overrides?: Partial<UseCaseMocks>) {
     getBacktestRunSignalsUseCaseMock: { execute: jest.fn() },
     getBacktestRunEquityUseCaseMock: { execute: jest.fn() },
     listBacktestRunsUseCaseMock: { execute: jest.fn() },
+    listActiveBacktestRunsUseCaseMock: { execute: jest.fn() },
     ...overrides,
   };
 
@@ -41,6 +43,7 @@ function makeController(overrides?: Partial<UseCaseMocks>) {
     mocks.getBacktestRunSignalsUseCaseMock as any,
     mocks.getBacktestRunEquityUseCaseMock as any,
     mocks.listBacktestRunsUseCaseMock as any,
+    mocks.listActiveBacktestRunsUseCaseMock as any,
   );
 
   return { controller, mocks };
@@ -549,5 +552,37 @@ describe('BacktestingController', () => {
         toDate: '2024-01-01T00:00:00.000Z',
       }),
     ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('listActiveBacktestRuns returns active run list', async () => {
+    const { controller, mocks } = makeController({
+      listActiveBacktestRunsUseCaseMock: {
+        execute: jest.fn().mockResolvedValue({
+          items: [
+            {
+              id: 'run-active-1',
+              symbol: 'BTCUSDT',
+              interval: '15m',
+              strategyVersion: 'fvg-bos-v1',
+              status: 'running',
+              processedCandles: 1234,
+              generatedSignals: 56,
+              startTime: '1704067200000',
+              endTime: '1706745599000',
+              createdAt: new Date('2024-02-01T00:00:00.000Z'),
+              updatedAt: new Date('2024-02-01T00:05:00.000Z'),
+              cancelRequestedAt: null,
+            },
+          ],
+        }),
+      },
+    });
+
+    const result = await controller.listActiveBacktestRuns();
+
+    expect(mocks.listActiveBacktestRunsUseCaseMock.execute).toHaveBeenCalled();
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]).toHaveProperty('status', 'running');
+    expect(result.items[0]).toHaveProperty('processedCandles', 1234);
   });
 });
