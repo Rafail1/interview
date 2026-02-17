@@ -20,6 +20,7 @@ import { GetImportQueueOverviewUseCase } from 'src/backtesting/application/use-c
 import { ImportBinanceDataUseCase } from 'src/backtesting/application/use-cases/import-binance-data.use-case';
 import { GetBacktestRunUseCase } from 'src/backtesting/application/use-cases/get-backtest-run.use-case';
 import { CancelBacktestRunUseCase } from 'src/backtesting/application/use-cases/cancel-backtest-run.use-case';
+import { GetBacktestRunProgressUseCase } from 'src/backtesting/application/use-cases/get-backtest-run-progress.use-case';
 import { GetBacktestRunSummaryUseCase } from 'src/backtesting/application/use-cases/get-backtest-run-summary.use-case';
 import { GetBacktestRunSignalsUseCase } from 'src/backtesting/application/use-cases/get-backtest-run-signals.use-case';
 import { GetBacktestRunEquityUseCase } from 'src/backtesting/application/use-cases/get-backtest-run-equity.use-case';
@@ -29,6 +30,7 @@ import { RunBacktestUseCase } from 'src/backtesting/application/use-cases/run-ba
 import { BacktestRunEquityResponseDto } from '../dtos/backtest-run-equity-response.dto';
 import { BacktestingHealthResponseDto } from '../dtos/backtesting-health-response.dto';
 import { BacktestRunResponseDto } from '../dtos/backtest-run-response.dto';
+import { BacktestRunProgressResponseDto } from '../dtos/backtest-run-progress-response.dto';
 import { BacktestRunSummaryResponseDto } from '../dtos/backtest-run-summary-response.dto';
 import { BacktestRunSeriesQueryDto } from '../dtos/backtest-run-series-query.dto';
 import { BacktestRunSignalsResponseDto } from '../dtos/backtest-run-signals-response.dto';
@@ -53,6 +55,7 @@ export class BacktestingController {
     private readonly runBacktestUseCase: RunBacktestUseCase,
     private readonly cancelBacktestRunUseCase: CancelBacktestRunUseCase,
     private readonly getBacktestRunUseCase: GetBacktestRunUseCase,
+    private readonly getBacktestRunProgressUseCase: GetBacktestRunProgressUseCase,
     private readonly getBacktestRunSummaryUseCase: GetBacktestRunSummaryUseCase,
     private readonly getBacktestRunSignalsUseCase: GetBacktestRunSignalsUseCase,
     private readonly getBacktestRunEquityUseCase: GetBacktestRunEquityUseCase,
@@ -173,6 +176,20 @@ export class BacktestingController {
       throw new NotFoundException(`Backtest run not found: ${runId}`);
     }
     return run;
+  }
+
+  @Get('run/:runId/progress')
+  @ApiOperation({ summary: 'Get backtest run progress for polling' })
+  @ApiOkResponse({ type: BacktestRunProgressResponseDto })
+  @ApiNotFoundResponse({ description: 'Backtest run not found' })
+  public async getBacktestRunProgress(
+    @Param('runId') runId: string,
+  ): Promise<BacktestRunProgressResponseDto> {
+    const progress = await this.getBacktestRunProgressUseCase.execute(runId);
+    if (!progress) {
+      throw new NotFoundException(`Backtest run not found: ${runId}`);
+    }
+    return progress;
   }
 
   @Get('run/:runId/summary')

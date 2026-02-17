@@ -9,6 +9,7 @@ type UseCaseMocks = {
   runBacktestUseCaseMock: { execute: jest.Mock };
   cancelBacktestRunUseCaseMock: { execute: jest.Mock };
   getBacktestRunUseCaseMock: { execute: jest.Mock };
+  getBacktestRunProgressUseCaseMock: { execute: jest.Mock };
   getBacktestRunSummaryUseCaseMock: { execute: jest.Mock };
   getBacktestRunSignalsUseCaseMock: { execute: jest.Mock };
   getBacktestRunEquityUseCaseMock: { execute: jest.Mock };
@@ -24,6 +25,7 @@ function makeController(overrides?: Partial<UseCaseMocks>) {
     runBacktestUseCaseMock: { execute: jest.fn() },
     cancelBacktestRunUseCaseMock: { execute: jest.fn() },
     getBacktestRunUseCaseMock: { execute: jest.fn() },
+    getBacktestRunProgressUseCaseMock: { execute: jest.fn() },
     getBacktestRunSummaryUseCaseMock: { execute: jest.fn() },
     getBacktestRunSignalsUseCaseMock: { execute: jest.fn() },
     getBacktestRunEquityUseCaseMock: { execute: jest.fn() },
@@ -39,6 +41,7 @@ function makeController(overrides?: Partial<UseCaseMocks>) {
     mocks.runBacktestUseCaseMock as any,
     mocks.cancelBacktestRunUseCaseMock as any,
     mocks.getBacktestRunUseCaseMock as any,
+    mocks.getBacktestRunProgressUseCaseMock as any,
     mocks.getBacktestRunSummaryUseCaseMock as any,
     mocks.getBacktestRunSignalsUseCaseMock as any,
     mocks.getBacktestRunEquityUseCaseMock as any,
@@ -284,6 +287,46 @@ describe('BacktestingController', () => {
     expect(result).toHaveProperty('status', 'completed');
     expect(result).toHaveProperty('signalsCount', 4);
     expect(result).toHaveProperty('equityPointsCount', 3);
+  });
+
+  it('getBacktestRunProgress returns progress payload when found', async () => {
+    const { controller, mocks } = makeController({
+      getBacktestRunProgressUseCaseMock: {
+        execute: jest.fn().mockResolvedValue({
+          runId: 'run-1',
+          status: 'running',
+          errorMessage: null,
+          processedCandles: 1234,
+          generatedSignals: 88,
+          startTime: '1704067200000',
+          endTime: '1706745599000',
+          cancelRequestedAt: null,
+          createdAt: new Date('2024-02-01T00:00:00.000Z'),
+          updatedAt: new Date('2024-02-01T00:05:00.000Z'),
+        }),
+      },
+    });
+
+    const result = await controller.getBacktestRunProgress('run-1');
+
+    expect(mocks.getBacktestRunProgressUseCaseMock.execute).toHaveBeenCalledWith(
+      'run-1',
+    );
+    expect(result).toHaveProperty('runId', 'run-1');
+    expect(result).toHaveProperty('status', 'running');
+    expect(result).toHaveProperty('processedCandles', 1234);
+  });
+
+  it('getBacktestRunProgress throws NotFoundException when run missing', async () => {
+    const { controller } = makeController({
+      getBacktestRunProgressUseCaseMock: {
+        execute: jest.fn().mockResolvedValue(null),
+      },
+    });
+
+    await expect(controller.getBacktestRunProgress('missing-run')).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
   });
 
   it('cancelBacktestRun delegates to use-case and returns status', async () => {

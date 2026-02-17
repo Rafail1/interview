@@ -6,6 +6,7 @@ import { GetImportQueueOverviewUseCase } from '../src/backtesting/application/us
 import { ImportBinanceDataUseCase } from '../src/backtesting/application/use-cases/import-binance-data.use-case';
 import { GetBacktestRunUseCase } from '../src/backtesting/application/use-cases/get-backtest-run.use-case';
 import { CancelBacktestRunUseCase } from '../src/backtesting/application/use-cases/cancel-backtest-run.use-case';
+import { GetBacktestRunProgressUseCase } from '../src/backtesting/application/use-cases/get-backtest-run-progress.use-case';
 import { GetBacktestRunSummaryUseCase } from '../src/backtesting/application/use-cases/get-backtest-run-summary.use-case';
 import { GetBacktestRunSignalsUseCase } from '../src/backtesting/application/use-cases/get-backtest-run-signals.use-case';
 import { GetBacktestRunEquityUseCase } from '../src/backtesting/application/use-cases/get-backtest-run-equity.use-case';
@@ -38,6 +39,10 @@ describe('Backtesting (e2e)', () => {
   };
 
   const getBacktestRunUseCaseMock = {
+    execute: jest.fn(),
+  };
+
+  const getBacktestRunProgressUseCaseMock = {
     execute: jest.fn(),
   };
 
@@ -88,6 +93,10 @@ describe('Backtesting (e2e)', () => {
         {
           provide: GetBacktestRunUseCase,
           useValue: getBacktestRunUseCaseMock,
+        },
+        {
+          provide: GetBacktestRunProgressUseCase,
+          useValue: getBacktestRunProgressUseCaseMock,
         },
         {
           provide: GetBacktestRunSummaryUseCase,
@@ -486,6 +495,40 @@ describe('Backtesting (e2e)', () => {
     expect(res.body).toHaveProperty('status', 'completed');
     expect(res.body).toHaveProperty('signalsCount', 4);
     expect(res.body).toHaveProperty('equityPointsCount', 3);
+  });
+
+  it('GET /backtesting/run/:runId/progress returns run progress', async () => {
+    getBacktestRunProgressUseCaseMock.execute.mockResolvedValue({
+      runId: 'run-e2e-1',
+      status: 'running',
+      errorMessage: null,
+      processedCandles: 5000,
+      generatedSignals: 150,
+      startTime: '1704067200000',
+      endTime: '1706745599000',
+      cancelRequestedAt: null,
+      createdAt: '2024-02-01T00:00:00.000Z',
+      updatedAt: '2024-02-01T00:10:00.000Z',
+    });
+
+    const res = await request(app.getHttpServer())
+      .get('/backtesting/run/run-e2e-1/progress')
+      .expect(200);
+
+    expect(getBacktestRunProgressUseCaseMock.execute).toHaveBeenCalledWith(
+      'run-e2e-1',
+    );
+    expect(res.body).toHaveProperty('runId', 'run-e2e-1');
+    expect(res.body).toHaveProperty('status', 'running');
+    expect(res.body).toHaveProperty('processedCandles', 5000);
+  });
+
+  it('GET /backtesting/run/:runId/progress returns 404 when run not found', async () => {
+    getBacktestRunProgressUseCaseMock.execute.mockResolvedValueOnce(null);
+
+    await request(app.getHttpServer())
+      .get('/backtesting/run/missing-run/progress')
+      .expect(404);
   });
 
   it('GET /backtesting/run/:runId returns 404 when run not found', async () => {
