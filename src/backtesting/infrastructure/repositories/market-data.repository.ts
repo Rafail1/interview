@@ -85,30 +85,11 @@ export class MarketDataRepository implements IMarketDataRepository {
       }
       return;
     }
-
-    const sourceCandles: Candle[] = [];
-    for await (const candle of this.getCandleStream(
-      symbol,
-      fromInterval.toString(),
-      startTime,
-      endTime,
-    )) {
-      sourceCandles.push(candle);
-    }
-
-    if (fromInterval.toString() === '1m') {
-      this.cache.cache1mCandles(symbol, sourceCandles);
-    }
-
-    const aggregated = CandleAggregator.aggregate(
-      sourceCandles,
+    yield* CandleAggregator.aggregateStream(
+      this.getCandleStream(symbol, fromInterval.toString(), startTime, endTime),
       fromInterval,
       toInterval,
     );
-
-    for (const candle of aggregated) {
-      yield candle;
-    }
   }
 
   public async saveCandles(candles: Candle[]): Promise<void> {

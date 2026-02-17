@@ -124,24 +124,25 @@ export type BacktestEquityPointView = {
 
 export type GetBacktestRunSeriesInput = {
   runId: string;
-  page: number;
   limit: number;
   fromTs?: bigint;
   toTs?: bigint;
+  cursorTs?: bigint;
+  cursorId?: string;
 };
 
 export type BacktestSignalEventListView = {
   items: BacktestSignalEventView[];
-  page: number;
   limit: number;
   total: number;
+  nextCursor: string | null;
 };
 
 export type BacktestEquityPointListView = {
   items: BacktestEquityPointView[];
-  page: number;
   limit: number;
   total: number;
+  nextCursor: string | null;
 };
 
 export type BacktestRunSummaryView = {

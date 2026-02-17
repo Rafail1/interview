@@ -28,11 +28,11 @@ export class BacktestRunSignalsResponseDto {
   readonly items: BacktestSignalEventDto[];
 
   @ApiProperty()
-  readonly page: number;
-
-  @ApiProperty()
   readonly limit: number;
 
   @ApiProperty()
   readonly total: number;
+
+  @ApiProperty({ nullable: true })
+  readonly nextCursor: string | null;
 }

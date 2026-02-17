@@ -338,14 +338,14 @@ describe('BacktestingController', () => {
               createdAt: new Date('2024-02-01T00:00:00.000Z'),
             },
           ],
-          page: 1,
           limit: 100,
           total: 1,
+          nextCursor: null,
         }),
       },
     });
 
-    const query = { page: 1, limit: 100 };
+    const query = { limit: 100 };
     const result = await controller.getBacktestRunSignals('run-1', query);
 
     expect(mocks.getBacktestRunSignalsUseCaseMock.execute).toHaveBeenCalledWith(
@@ -381,14 +381,14 @@ describe('BacktestingController', () => {
               createdAt: new Date('2024-02-01T00:00:00.000Z'),
             },
           ],
-          page: 1,
           limit: 100,
           total: 1,
+          nextCursor: null,
         }),
       },
     });
 
-    const query = { page: 1, limit: 100 };
+    const query = { limit: 100 };
     const result = await controller.getBacktestRunEquity('run-1', query);
 
     expect(mocks.getBacktestRunEquityUseCaseMock.execute).toHaveBeenCalledWith(

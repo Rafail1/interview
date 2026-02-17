@@ -17,10 +17,12 @@ export class GetBacktestRunEquityUseCase {
     runId: string,
     query: BacktestRunSeriesQueryDto,
   ): Promise<BacktestEquityPointListView | null> {
-    const page = query.page ?? 1;
     const limit = query.limit ?? 100;
     const fromTs = query.fromTs ? BigInt(query.fromTs) : undefined;
     const toTs = query.toTs ? BigInt(query.toTs) : undefined;
+    const parsedCursor = query.cursor?.split(':');
+    const cursorTs = parsedCursor ? BigInt(parsedCursor[0]) : undefined;
+    const cursorId = parsedCursor ? parsedCursor[1] : undefined;
 
     if (fromTs !== undefined && toTs !== undefined && fromTs > toTs) {
       throw new Error('fromTs must be before or equal to toTs');
@@ -28,10 +30,11 @@ export class GetBacktestRunEquityUseCase {
 
     return this.backtestRunRepository.findEquityByRunId({
       runId,
-      page,
       limit,
       fromTs,
       toTs,
+      cursorTs,
+      cursorId,
     });
   }
 }

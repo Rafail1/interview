@@ -11,10 +11,11 @@ describe('GetBacktestRunEquityUseCase', () => {
 
     expect(repositoryMock.findEquityByRunId).toHaveBeenCalledWith({
       runId: 'run-1',
-      page: 1,
       limit: 100,
       fromTs: undefined,
       toTs: undefined,
+      cursorTs: undefined,
+      cursorId: undefined,
     });
   });
 
@@ -25,7 +26,6 @@ describe('GetBacktestRunEquityUseCase', () => {
     const useCase = new GetBacktestRunEquityUseCase(repositoryMock as any);
 
     await useCase.execute('run-2', {
-      page: 3,
       limit: 25,
       fromTs: '1704067200000',
       toTs: '1704067319999',
@@ -33,10 +33,31 @@ describe('GetBacktestRunEquityUseCase', () => {
 
     expect(repositoryMock.findEquityByRunId).toHaveBeenCalledWith({
       runId: 'run-2',
-      page: 3,
       limit: 25,
       fromTs: 1704067200000n,
       toTs: 1704067319999n,
+      cursorTs: undefined,
+      cursorId: undefined,
+    });
+  });
+
+  it('parses cursor and forwards cursor fields', async () => {
+    const repositoryMock = {
+      findEquityByRunId: jest.fn().mockResolvedValue(null),
+    };
+    const useCase = new GetBacktestRunEquityUseCase(repositoryMock as any);
+
+    await useCase.execute('run-2', {
+      cursor: '1704067200000:5d951645-7b12-4af4-8f5d-0f7d2782d8ba',
+    });
+
+    expect(repositoryMock.findEquityByRunId).toHaveBeenCalledWith({
+      runId: 'run-2',
+      limit: 100,
+      fromTs: undefined,
+      toTs: undefined,
+      cursorTs: 1704067200000n,
+      cursorId: '5d951645-7b12-4af4-8f5d-0f7d2782d8ba',
     });
   });
 

@@ -22,11 +22,11 @@ export class BacktestRunEquityResponseDto {
   readonly items: BacktestEquityPointDto[];
 
   @ApiProperty()
-  readonly page: number;
-
-  @ApiProperty()
   readonly limit: number;
 
   @ApiProperty()
   readonly total: number;
+
+  @ApiProperty({ nullable: true })
+  readonly nextCursor: string | null;
 }

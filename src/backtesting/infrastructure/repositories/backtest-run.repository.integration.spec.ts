@@ -269,13 +269,13 @@ maybeDescribe('BacktestRunRepository integration', () => {
 
     const signals = await repository.findSignalsByRunId({
       runId,
-      page: 1,
       limit: 10,
     });
 
     expect(signals).not.toBeNull();
     expect(signals).toHaveProperty('total', 2);
     expect(signals?.items).toHaveLength(2);
+    expect(signals).toHaveProperty('nextCursor', null);
     expect(signals?.items[0]).toEqual(
       expect.objectContaining({
         timestamp: '1704067200000',
@@ -333,13 +333,13 @@ maybeDescribe('BacktestRunRepository integration', () => {
 
     const equityPoints = await repository.findEquityByRunId({
       runId,
-      page: 1,
       limit: 10,
     });
 
     expect(equityPoints).not.toBeNull();
     expect(equityPoints).toHaveProperty('total', 2);
     expect(equityPoints?.items).toHaveLength(2);
+    expect(equityPoints).toHaveProperty('nextCursor', null);
     expect(equityPoints?.items[0]).toEqual(
       expect.objectContaining({
         timestamp: '1704067200000',
@@ -356,7 +356,7 @@ maybeDescribe('BacktestRunRepository integration', () => {
     );
   });
 
-  it('applies pagination and timestamp range filters to signals series', async () => {
+  it('applies cursor windowing and timestamp range filters to signals series', async () => {
     const runId = await repository.saveRun({
       symbol: 'BTCUSDT',
       interval: '15m',
@@ -400,31 +400,42 @@ maybeDescribe('BacktestRunRepository integration', () => {
     });
     createdRunIds.push(runId);
 
-    const paged = await repository.findSignalsByRunId({
+    const firstWindow = await repository.findSignalsByRunId({
       runId,
-      page: 2,
       limit: 1,
+    });
+    const [cursorTsRaw, cursorId] = (firstWindow?.nextCursor ?? '').split(':');
+    const secondWindow = await repository.findSignalsByRunId({
+      runId,
+      limit: 1,
+      cursorTs: BigInt(cursorTsRaw),
+      cursorId,
     });
     const ranged = await repository.findSignalsByRunId({
       runId,
-      page: 1,
       limit: 10,
       fromTs: 1704067260000n,
       toTs: 1704067320000n,
     });
 
-    expect(paged).not.toBeNull();
-    expect(paged).toHaveProperty('total', 3);
-    expect(paged).toHaveProperty('page', 2);
-    expect(paged?.items).toHaveLength(1);
-    expect(paged?.items[0]).toHaveProperty('reason', 's2');
+    expect(firstWindow).not.toBeNull();
+    expect(firstWindow).toHaveProperty('total', 3);
+    expect(firstWindow?.items).toHaveLength(1);
+    expect(firstWindow?.items[0]).toHaveProperty('reason', 's1');
+    expect(firstWindow?.nextCursor).toMatch(/^1704067200000:[0-9a-f-]{36}$/);
+
+    expect(secondWindow).not.toBeNull();
+    expect(secondWindow?.items).toHaveLength(1);
+    expect(secondWindow?.items[0]).toHaveProperty('reason', 's2');
+    expect(secondWindow?.nextCursor).toMatch(/^1704067260000:[0-9a-f-]{36}$/);
 
     expect(ranged).not.toBeNull();
     expect(ranged).toHaveProperty('total', 2);
     expect(ranged?.items.map((item) => item.reason)).toEqual(['s2', 's3']);
+    expect(ranged).toHaveProperty('nextCursor', null);
   });
 
-  it('applies pagination and timestamp range filters to equity series', async () => {
+  it('applies cursor windowing and timestamp range filters to equity series', async () => {
     const runId = await repository.saveRun({
       symbol: 'BTCUSDT',
       interval: '15m',
@@ -465,28 +476,170 @@ maybeDescribe('BacktestRunRepository integration', () => {
     });
     createdRunIds.push(runId);
 
-    const paged = await repository.findEquityByRunId({
+    const firstWindow = await repository.findEquityByRunId({
       runId,
-      page: 3,
       limit: 1,
+    });
+    const [cursorTsRaw, cursorId] = (firstWindow?.nextCursor ?? '').split(':');
+    const secondWindow = await repository.findEquityByRunId({
+      runId,
+      limit: 1,
+      cursorTs: BigInt(cursorTsRaw),
+      cursorId,
     });
     const ranged = await repository.findEquityByRunId({
       runId,
-      page: 1,
       limit: 10,
       fromTs: 1704067260000n,
       toTs: 1704067320000n,
     });
 
-    expect(paged).not.toBeNull();
-    expect(paged).toHaveProperty('total', 3);
-    expect(paged).toHaveProperty('page', 3);
-    expect(paged?.items).toHaveLength(1);
-    expect(paged?.items[0]).toHaveProperty('equity', '10005');
+    expect(firstWindow).not.toBeNull();
+    expect(firstWindow).toHaveProperty('total', 3);
+    expect(firstWindow?.items).toHaveLength(1);
+    expect(firstWindow?.items[0]).toHaveProperty('equity', '10000');
+    expect(firstWindow?.nextCursor).toMatch(/^1704067200000:[0-9a-f-]{36}$/);
+
+    expect(secondWindow).not.toBeNull();
+    expect(secondWindow?.items).toHaveLength(1);
+    expect(secondWindow?.items[0]).toHaveProperty('equity', '10010');
+    expect(secondWindow?.nextCursor).toMatch(/^1704067260000:[0-9a-f-]{36}$/);
 
     expect(ranged).not.toBeNull();
     expect(ranged).toHaveProperty('total', 2);
     expect(ranged?.items.map((item) => item.equity)).toEqual(['10010', '10005']);
+    expect(ranged).toHaveProperty('nextCursor', null);
+  });
+
+  it('supports cursor pagination for signals with stable timestamp+id ordering', async () => {
+    const runId = await repository.saveRun({
+      symbol: 'BTCUSDT',
+      interval: '15m',
+      strategyVersion: 'fvg-bos-v1',
+      config: {},
+      startTimeMs: 1704067200000n,
+      endTimeMs: 1704067319999n,
+      metrics: {
+        totalTrades: 0,
+        winningTrades: 0,
+        losingTrades: 0,
+        winRate: '0',
+        totalPnL: '0',
+        maxDrawdown: '0',
+        sharpeRatio: '0',
+        profitFactor: '0',
+        avgWin: '0',
+        avgLoss: '0',
+      },
+      trades: [],
+      signals: [
+        {
+          timestampMs: 1704067200000n,
+          signalType: 'BUY',
+          reason: 'c1',
+          price: '1',
+        },
+        {
+          timestampMs: 1704067260000n,
+          signalType: 'SELL',
+          reason: 'c2',
+          price: '2',
+        },
+        {
+          timestampMs: 1704067320000n,
+          signalType: 'BUY',
+          reason: 'c3',
+          price: '3',
+        },
+      ],
+    });
+    createdRunIds.push(runId);
+
+    const firstPage = await repository.findSignalsByRunId({
+      runId,
+      limit: 1,
+    });
+
+    expect(firstPage).not.toBeNull();
+    expect(firstPage?.items[0]).toHaveProperty('reason', 'c1');
+    expect(firstPage?.nextCursor).toMatch(
+      /^1704067200000:[0-9a-f-]{36}$/,
+    );
+
+    const [cursorTsRaw, cursorId] = (firstPage?.nextCursor ?? '').split(':');
+    const secondPage = await repository.findSignalsByRunId({
+      runId,
+      limit: 1,
+      cursorTs: BigInt(cursorTsRaw),
+      cursorId,
+    });
+
+    expect(secondPage).not.toBeNull();
+    expect(secondPage?.items[0]).toHaveProperty('reason', 'c2');
+  });
+
+  it('supports cursor pagination for equity points with stable timestamp+id ordering', async () => {
+    const runId = await repository.saveRun({
+      symbol: 'BTCUSDT',
+      interval: '15m',
+      strategyVersion: 'fvg-bos-v1',
+      config: {},
+      startTimeMs: 1704067200000n,
+      endTimeMs: 1704067319999n,
+      metrics: {
+        totalTrades: 0,
+        winningTrades: 0,
+        losingTrades: 0,
+        winRate: '0',
+        totalPnL: '0',
+        maxDrawdown: '0',
+        sharpeRatio: '0',
+        profitFactor: '0',
+        avgWin: '0',
+        avgLoss: '0',
+      },
+      trades: [],
+      equityPoints: [
+        {
+          timestampMs: 1704067200000n,
+          equity: '10000',
+          drawdown: '0',
+        },
+        {
+          timestampMs: 1704067260000n,
+          equity: '10010',
+          drawdown: '0',
+        },
+        {
+          timestampMs: 1704067320000n,
+          equity: '10005',
+          drawdown: '5',
+        },
+      ],
+    });
+    createdRunIds.push(runId);
+
+    const firstPage = await repository.findEquityByRunId({
+      runId,
+      limit: 1,
+    });
+
+    expect(firstPage).not.toBeNull();
+    expect(firstPage?.items[0]).toHaveProperty('equity', '10000');
+    expect(firstPage?.nextCursor).toMatch(
+      /^1704067200000:[0-9a-f-]{36}$/,
+    );
+
+    const [cursorTsRaw, cursorId] = (firstPage?.nextCursor ?? '').split(':');
+    const secondPage = await repository.findEquityByRunId({
+      runId,
+      limit: 1,
+      cursorTs: BigInt(cursorTsRaw),
+      cursorId,
+    });
+
+    expect(secondPage).not.toBeNull();
+    expect(secondPage?.items[0]).toHaveProperty('equity', '10010');
   });
 
   it('reads compact summary including latest equity snapshot', async () => {

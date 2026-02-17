@@ -464,22 +464,48 @@ describe('Backtesting (e2e)', () => {
           createdAt: '2024-02-01T00:00:00.000Z',
         },
       ],
-      page: 2,
       limit: 1,
       total: 3,
+      nextCursor: '1704067200000:5d951645-7b12-4af4-8f5d-0f7d2782d8ba',
     });
 
     const res = await request(app.getHttpServer())
-      .get('/backtesting/run/run-e2e-1/signals?page=2&limit=1')
+      .get('/backtesting/run/run-e2e-1/signals?limit=1')
       .expect(200);
 
     expect(getBacktestRunSignalsUseCaseMock.execute).toHaveBeenCalledWith(
       'run-e2e-1',
-      { page: 2, limit: 1 },
+      { limit: 1 },
     );
     expect(res.body.items[0]).toHaveProperty('id', 'sig-e2e-1');
-    expect(res.body).toHaveProperty('page', 2);
     expect(res.body).toHaveProperty('total', 3);
+    expect(res.body).toHaveProperty(
+      'nextCursor',
+      '1704067200000:5d951645-7b12-4af4-8f5d-0f7d2782d8ba',
+    );
+  });
+
+  it('GET /backtesting/run/:runId/signals forwards cursor query', async () => {
+    getBacktestRunSignalsUseCaseMock.execute.mockResolvedValue({
+      items: [],
+      limit: 2,
+      total: 3,
+      nextCursor: null,
+    });
+
+    await request(app.getHttpServer())
+      .get(
+        '/backtesting/run/run-e2e-1/signals?limit=2&cursor=1704067200000:5d951645-7b12-4af4-8f5d-0f7d2782d8ba',
+      )
+      .expect(200);
+
+    expect(getBacktestRunSignalsUseCaseMock.execute).toHaveBeenCalledWith(
+      'run-e2e-1',
+      {
+        limit: 2,
+        cursor: '1704067200000:5d951645-7b12-4af4-8f5d-0f7d2782d8ba',
+      },
+    );
   });
 
   it('GET /backtesting/run/:runId/signals returns 404 when run not found', async () => {
@@ -501,9 +527,9 @@ describe('Backtesting (e2e)', () => {
           createdAt: '2024-02-01T00:00:00.000Z',
         },
       ],
-      page: 1,
       limit: 100,
       total: 1,
+      nextCursor: null,
     });
 
     const res = await request(app.getHttpServer())
@@ -516,6 +542,7 @@ describe('Backtesting (e2e)', () => {
     );
     expect(res.body.items[0]).toHaveProperty('id', 'eq-e2e-1');
     expect(res.body).toHaveProperty('total', 1);
+    expect(res.body).toHaveProperty('nextCursor', null);
   });
 
   it('GET /backtesting/run/:runId/equity returns 404 when run not found', async () => {
@@ -526,9 +553,9 @@ describe('Backtesting (e2e)', () => {
       .expect(404);
   });
 
-  it('GET /backtesting/run/:runId/signals returns 400 for invalid pagination', async () => {
+  it('GET /backtesting/run/:runId/signals returns 400 for invalid cursor format', async () => {
     await request(app.getHttpServer())
-      .get('/backtesting/run/run-e2e-1/signals?page=0')
+      .get('/backtesting/run/run-e2e-1/signals?cursor=bad-cursor')
       .expect(400);
 
     expect(getBacktestRunSignalsUseCaseMock.execute).not.toHaveBeenCalled();

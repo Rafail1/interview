@@ -4,11 +4,12 @@ import { IsInt, IsOptional, Matches, Max, Min } from 'class-validator';
 
 export class BacktestRunSeriesQueryDto {
   @IsOptional()
-  @Transform(({ value }) => Number(value))
-  @IsInt()
-  @Min(1)
-  @ApiPropertyOptional({ default: 1 })
-  readonly page?: number;
+  @Matches(/^\d+:[0-9a-fA-F-]{36}$/)
+  @ApiPropertyOptional({
+    description: 'Cursor in format "<timestampMs>:<uuid>"',
+    example: '1704067200000:5d951645-7b12-4af4-8f5d-0f7d2782d8ba',
+  })
+  readonly cursor?: string;
 
   @IsOptional()
   @Transform(({ value }) => Number(value))

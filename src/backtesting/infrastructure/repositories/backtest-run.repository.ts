@@ -224,7 +224,7 @@ export class BacktestRunRepository implements IBacktestRunRepository {
       return null;
     }
 
-    const where = {
+    const baseWhere = {
       backtestRunId: input.runId,
       ...(input.fromTs !== undefined || input.toTs !== undefined
         ? {
@@ -235,25 +235,46 @@ export class BacktestRunRepository implements IBacktestRunRepository {
           }
         : {}),
     };
-    const skip = (input.page - 1) * input.limit;
-
+    const where =
+      input.cursorTs !== undefined && input.cursorId
+        ? {
+            AND: [
+              baseWhere,
+              {
+                OR: [
+                  { timestamp: { gt: input.cursorTs } },
+                  {
+                    AND: [
+                      { timestamp: input.cursorTs },
+                      { id: { gt: input.cursorId } },
+                    ],
+                  },
+                ],
+              },
+            ],
+          }
+        : baseWhere;
     const [total, rows] = await this.prisma.$transaction([
-      this.prisma.signalEvent.count({ where }),
+      this.prisma.signalEvent.count({ where: baseWhere }),
       this.prisma.signalEvent.findMany({
         where,
-        orderBy: { timestamp: 'asc' },
-        skip,
-        take: input.limit,
+        orderBy: [{ timestamp: 'asc' }, { id: 'asc' }],
+        take: input.limit + 1,
       }),
     ]);
+    const hasMore = rows.length > input.limit;
+    const items = hasMore ? rows.slice(0, input.limit) : rows;
+    const lastItem = items[items.length - 1];
 
     return {
-      items: rows.map((signal) =>
+      items: items.map((signal) =>
         this.backtestRunMapper.toDomainSignalEvent(signal),
       ),
-      page: input.page,
       limit: input.limit,
       total,
+      nextCursor: hasMore
+        ? `${lastItem.timestamp.toString()}:${lastItem.id}`
+        : null,
     };
   }
 
@@ -267,7 +288,7 @@ export class BacktestRunRepository implements IBacktestRunRepository {
       return null;
     }
 
-    const where = {
+    const baseWhere = {
       backtestRunId: input.runId,
       ...(input.fromTs !== undefined || input.toTs !== undefined
         ? {
@@ -278,25 +299,46 @@ export class BacktestRunRepository implements IBacktestRunRepository {
           }
         : {}),
     };
-    const skip = (input.page - 1) * input.limit;
-
+    const where =
+      input.cursorTs !== undefined && input.cursorId
+        ? {
+            AND: [
+              baseWhere,
+              {
+                OR: [
+                  { timestamp: { gt: input.cursorTs } },
+                  {
+                    AND: [
+                      { timestamp: input.cursorTs },
+                      { id: { gt: input.cursorId } },
+                    ],
+                  },
+                ],
+              },
+            ],
+          }
+        : baseWhere;
     const [total, rows] = await this.prisma.$transaction([
-      this.prisma.equityPoint.count({ where }),
+      this.prisma.equityPoint.count({ where: baseWhere }),
       this.prisma.equityPoint.findMany({
         where,
-        orderBy: { timestamp: 'asc' },
-        skip,
-        take: input.limit,
+        orderBy: [{ timestamp: 'asc' }, { id: 'asc' }],
+        take: input.limit + 1,
       }),
     ]);
+    const hasMore = rows.length > input.limit;
+    const items = hasMore ? rows.slice(0, input.limit) : rows;
+    const lastItem = items[items.length - 1];
 
     return {
-      items: rows.map((point) =>
+      items: items.map((point) =>
         this.backtestRunMapper.toDomainEquityPoint(point),
       ),
-      page: input.page,
       limit: input.limit,
       total,
+      nextCursor: hasMore
+        ? `${lastItem.timestamp.toString()}:${lastItem.id}`
+        : null,
     };
   }
 }
