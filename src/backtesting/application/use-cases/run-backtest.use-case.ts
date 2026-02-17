@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import Decimal from 'decimal.js';
 import { Candle } from 'src/backtesting/domain/entities/candle.entity';
 import {
@@ -7,6 +8,10 @@ import {
 } from 'src/backtesting/domain/interfaces/backtest-run-repository.interface';
 import { MetricsCalculator } from 'src/backtesting/infrastructure/trade-simulation/metrics.calculator';
 import { RunBacktestRequestDto } from 'src/backtesting/interfaces/dtos/run-backtest-request.dto';
+import {
+  LOGGER_TOKEN,
+  type ILogger,
+} from 'src/core/interfaces/logger.interface';
 import {
   MARKET_DATA_REPOSITORY_TOKEN,
   type IMarketDataRepository,
@@ -25,7 +30,12 @@ import { Timestamp } from 'src/backtesting/domain/value-objects/timestamp.value-
 
 @Injectable()
 export class RunBacktestUseCase {
+  private static readonly LOG_CONTEXT = 'RunBacktestUseCase';
+  private static readonly DEFAULT_PROGRESS_LOG_EVERY = 10_000;
+  private readonly progressLogEvery: number;
+
   constructor(
+    private readonly configService: ConfigService,
     @Inject(MARKET_DATA_REPOSITORY_TOKEN)
     private readonly marketDataRepository: IMarketDataRepository,
     @Inject(STRATEGY_EVALUATOR_TOKEN)
@@ -34,7 +44,18 @@ export class RunBacktestUseCase {
     private readonly tradeSimulator: ITradeSimulator,
     @Inject(BACKTEST_RUN_REPOSITORY_TOKEN)
     private readonly backtestRunRepository: IBacktestRunRepository,
-  ) {}
+    @Inject(LOGGER_TOKEN)
+    private readonly logger: ILogger,
+  ) {
+    const configured = Number(
+      this.configService.get<string>('BACKTEST_PROGRESS_LOG_EVERY') ??
+        String(RunBacktestUseCase.DEFAULT_PROGRESS_LOG_EVERY),
+    );
+    this.progressLogEvery =
+      Number.isFinite(configured) && configured > 0
+        ? Math.floor(configured)
+        : RunBacktestUseCase.DEFAULT_PROGRESS_LOG_EVERY;
+  }
 
   public async execute(command: RunBacktestRequestDto) {
     const fromInterval = Timeframe.from(command.fromInterval ?? '1m');
@@ -89,6 +110,11 @@ export class RunBacktestUseCase {
         : higherTimeframeStep.value;
     }
 
+    this.logger.log(
+      `Starting backtest symbol=${command.symbol} from=${fromInterval.toString()} to=${toInterval.toString()} startMs=${start.toMs().toString()} endMs=${end.toMs().toString()}`,
+      RunBacktestUseCase.LOG_CONTEXT,
+    );
+
     for await (const candle of this.marketDataRepository.getCandleStream(
       command.symbol,
       fromInterval.toString(),
@@ -97,6 +123,13 @@ export class RunBacktestUseCase {
     )) {
       processedCandles += 1;
       lastCandle = candle;
+
+      if (processedCandles % this.progressLogEvery === 0) {
+        this.logger.log(
+          `Progress processedCandles=${processedCandles} generatedSignals=${generatedSignals}`,
+          RunBacktestUseCase.LOG_CONTEXT,
+        );
+      }
 
       while (
         !useSameTimeframeContext &&
@@ -182,6 +215,11 @@ export class RunBacktestUseCase {
       signals: persistedSignals,
       equityPoints,
     });
+
+    this.logger.log(
+      `Completed backtest runId=${runId} processedCandles=${processedCandles} generatedSignals=${generatedSignals} closedTrades=${closedTrades.length}`,
+      RunBacktestUseCase.LOG_CONTEXT,
+    );
 
     return {
       runId,

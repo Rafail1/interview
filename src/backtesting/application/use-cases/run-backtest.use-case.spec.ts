@@ -27,6 +27,20 @@ async function* stream(candles: Candle[]): AsyncGenerator<Candle> {
 }
 
 describe('RunBacktestUseCase', () => {
+  const configServiceMock = {
+    get: jest.fn().mockReturnValue(undefined),
+  };
+  const loggerMock = {
+    log: jest.fn(),
+    warn: jest.fn(),
+    debug: jest.fn(),
+    error: jest.fn(),
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   it('streams candles, processes signals, closes open trade, and returns summary', async () => {
     const candle1 = makeCandle(1_700_000_000_000, '100');
     const candle2 = makeCandle(1_700_000_060_000, '102');
@@ -72,10 +86,12 @@ describe('RunBacktestUseCase', () => {
     } as any;
 
     const useCase = new RunBacktestUseCase(
+      configServiceMock as any,
       marketDataRepositoryMock,
       strategyEvaluatorMock,
       tradeSimulatorMock,
       backtestRunRepositoryMock,
+      loggerMock as any,
     );
 
     const result = await useCase.execute({
@@ -131,14 +147,17 @@ describe('RunBacktestUseCase', () => {
     expect(result).toHaveProperty('processedCandles', 2);
     expect(result).toHaveProperty('generatedSignals', 1);
     expect(result).toHaveProperty('metrics.totalTrades', 0);
+    expect(loggerMock.log).toHaveBeenCalled();
   });
 
   it('throws when startDate is after endDate', async () => {
     const useCase = new RunBacktestUseCase(
+      configServiceMock as any,
       {} as any,
       {} as any,
       {} as any,
       {} as any,
+      loggerMock as any,
     );
 
     await expect(
@@ -178,10 +197,12 @@ describe('RunBacktestUseCase', () => {
     } as any;
 
     const useCase = new RunBacktestUseCase(
+      configServiceMock as any,
       marketDataRepositoryMock,
       strategyEvaluatorMock,
       tradeSimulatorMock,
       backtestRunRepositoryMock,
+      loggerMock as any,
     );
 
     await useCase.execute({
@@ -204,5 +225,59 @@ describe('RunBacktestUseCase', () => {
       candle2,
     );
     expect(backtestRunRepositoryMock.saveRun).toHaveBeenCalled();
+  });
+
+  it('falls back to default progress interval when env value is invalid', async () => {
+    const candle1 = makeCandle(1_700_000_000_000, '100');
+    const candle2 = makeCandle(1_700_000_060_000, '102');
+
+    const marketDataRepositoryMock = {
+      getCandleStream: jest
+        .fn()
+        .mockImplementation(() => stream([candle1, candle2])),
+      getAggregatedStream: jest.fn(),
+    } as any;
+
+    const strategyEvaluatorMock = {
+      reset: jest.fn(),
+      evaluate: jest.fn().mockReturnValue([]),
+    } as any;
+
+    const tradeSimulatorMock = {
+      reset: jest.fn(),
+      getOpenTrade: jest.fn().mockReturnValue(null),
+      processSignal: jest.fn(),
+      closeOpenTrade: jest.fn(),
+      getClosedTrades: jest.fn().mockReturnValue([]),
+    } as any;
+    const backtestRunRepositoryMock = {
+      saveRun: jest.fn().mockResolvedValue('run-3'),
+    } as any;
+    const invalidConfigServiceMock = {
+      get: jest.fn().mockReturnValue('abc'),
+    };
+
+    const useCase = new RunBacktestUseCase(
+      invalidConfigServiceMock as any,
+      marketDataRepositoryMock,
+      strategyEvaluatorMock,
+      tradeSimulatorMock,
+      backtestRunRepositoryMock,
+      loggerMock as any,
+    );
+
+    await useCase.execute({
+      symbol: 'BTCUSDT',
+      startDate: '2024-01-01T00:00:00.000Z',
+      endDate: '2024-01-01T00:10:00.000Z',
+      fromInterval: '1m',
+      toInterval: '1m',
+    });
+
+    const progressCalls = loggerMock.log.mock.calls.filter(
+      (call) =>
+        typeof call[0] === 'string' && call[0].startsWith('Progress '),
+    );
+    expect(progressCalls).toHaveLength(0);
   });
 });
