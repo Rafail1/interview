@@ -48,6 +48,12 @@ export class BacktestRunResponseDto {
   @ApiProperty()
   readonly strategyVersion: string;
 
+  @ApiProperty({ enum: ['pending', 'running', 'completed', 'failed'] })
+  readonly status: 'pending' | 'running' | 'completed' | 'failed';
+
+  @ApiProperty({ nullable: true })
+  readonly errorMessage: string | null;
+
   @ApiProperty({ type: Object })
   readonly config: Record<string, unknown>;
 

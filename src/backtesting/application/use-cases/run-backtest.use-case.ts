@@ -131,128 +131,143 @@ export class RunBacktestUseCase {
       startTimeMs: start.toMs(),
       endTimeMs: end.toMs(),
     });
+    try {
+      for await (const candle of this.marketDataRepository.getCandleStream(
+        command.symbol,
+        fromInterval.toString(),
+        start,
+        end,
+      )) {
+        processedCandles += 1;
+        lastCandle = candle;
 
-    for await (const candle of this.marketDataRepository.getCandleStream(
-      command.symbol,
-      fromInterval.toString(),
-      start,
-      end,
-    )) {
-      processedCandles += 1;
-      lastCandle = candle;
+        if (processedCandles % this.progressLogEvery === 0) {
+          this.logger.log(
+            `Progress processedCandles=${processedCandles} generatedSignals=${generatedSignals}`,
+            RunBacktestUseCase.LOG_CONTEXT,
+          );
+        }
 
-      if (processedCandles % this.progressLogEvery === 0) {
-        this.logger.log(
-          `Progress processedCandles=${processedCandles} generatedSignals=${generatedSignals}`,
-          RunBacktestUseCase.LOG_CONTEXT,
+        while (
+          !useSameTimeframeContext &&
+          higherTimeframeIterator &&
+          activeHigherTimeframeCandle &&
+          candle
+            .getOpenTime()
+            .isAfter(activeHigherTimeframeCandle.getCloseTime())
+        ) {
+          const higherTimeframeStep = await higherTimeframeIterator.next();
+          activeHigherTimeframeCandle = higherTimeframeStep.done
+            ? null
+            : higherTimeframeStep.value;
+        }
+
+        const higherCandleContext = useSameTimeframeContext
+          ? candle
+          : this.inRange(candle, activeHigherTimeframeCandle)
+            ? activeHigherTimeframeCandle
+            : null;
+
+        const signals = this.strategyEvaluator.evaluate(
+          candle,
+          higherCandleContext,
+        );
+        generatedSignals += signals.length;
+
+        for (const signal of signals) {
+          signalsBuffer.push({
+            timestampMs: signal.getTime().toMs(),
+            signalType: signal.getType(),
+            reason: signal.getReason(),
+            price: signal.getPrice().toString(),
+            metadata: signal.getMetadata(),
+          });
+          if (signalsBuffer.length >= RunBacktestUseCase.SIGNALS_BATCH_SIZE) {
+            await this.backtestRunRepository.appendSignals(
+              runId,
+              signalsBuffer,
+            );
+            signalsBuffer.length = 0;
+          }
+
+          const existing = this.tradeSimulator.getOpenTrade();
+          if (existing && signal.getType() !== 'INVALID') {
+            this.tradeSimulator.closeOpenTrade(candle, 'new_signal');
+          }
+          this.tradeSimulator.processSignal(signal, riskModel);
+        }
+      }
+
+      if (lastCandle && this.tradeSimulator.getOpenTrade()) {
+        this.tradeSimulator.closeOpenTrade(lastCandle, 'end_of_backtest');
+      }
+
+      if (signalsBuffer.length > 0) {
+        await this.backtestRunRepository.appendSignals(runId, signalsBuffer);
+      }
+
+      const closedTrades = this.tradeSimulator.getClosedTrades();
+      const metrics = MetricsCalculator.calculateMetrics(
+        closedTrades,
+        initialBalance,
+      );
+      const equityPoints = this.buildEquityPoints(
+        closedTrades,
+        initialBalance,
+        start,
+      );
+      for (
+        let i = 0;
+        i < equityPoints.length;
+        i += RunBacktestUseCase.EQUITY_BATCH_SIZE
+      ) {
+        await this.backtestRunRepository.appendEquityPoints(
+          runId,
+          equityPoints.slice(i, i + RunBacktestUseCase.EQUITY_BATCH_SIZE),
         );
       }
 
-      while (
-        !useSameTimeframeContext &&
-        higherTimeframeIterator &&
-        activeHigherTimeframeCandle &&
-        candle.getOpenTime().isAfter(activeHigherTimeframeCandle.getCloseTime())
-      ) {
-        const higherTimeframeStep = await higherTimeframeIterator.next();
-        activeHigherTimeframeCandle = higherTimeframeStep.done
-          ? null
-          : higherTimeframeStep.value;
-      }
-
-      const higherCandleContext = useSameTimeframeContext
-        ? candle
-        : this.inRange(candle, activeHigherTimeframeCandle)
-          ? activeHigherTimeframeCandle
-          : null;
-
-      const signals = this.strategyEvaluator.evaluate(
-        candle,
-        higherCandleContext,
-      );
-      generatedSignals += signals.length;
-
-      for (const signal of signals) {
-        signalsBuffer.push({
-          timestampMs: signal.getTime().toMs(),
-          signalType: signal.getType(),
-          reason: signal.getReason(),
-          price: signal.getPrice().toString(),
-          metadata: signal.getMetadata(),
-        });
-        if (signalsBuffer.length >= RunBacktestUseCase.SIGNALS_BATCH_SIZE) {
-          await this.backtestRunRepository.appendSignals(runId, signalsBuffer);
-          signalsBuffer.length = 0;
-        }
-
-        const existing = this.tradeSimulator.getOpenTrade();
-        if (existing && signal.getType() !== 'INVALID') {
-          this.tradeSimulator.closeOpenTrade(candle, 'new_signal');
-        }
-        this.tradeSimulator.processSignal(signal, riskModel);
-      }
-    }
-
-    if (lastCandle && this.tradeSimulator.getOpenTrade()) {
-      this.tradeSimulator.closeOpenTrade(lastCandle, 'end_of_backtest');
-    }
-
-    if (signalsBuffer.length > 0) {
-      await this.backtestRunRepository.appendSignals(runId, signalsBuffer);
-    }
-
-    const closedTrades = this.tradeSimulator.getClosedTrades();
-    const metrics = MetricsCalculator.calculateMetrics(
-      closedTrades,
-      initialBalance,
-    );
-    const equityPoints = this.buildEquityPoints(
-      closedTrades,
-      initialBalance,
-      start,
-    );
-    for (
-      let i = 0;
-      i < equityPoints.length;
-      i += RunBacktestUseCase.EQUITY_BATCH_SIZE
-    ) {
-      await this.backtestRunRepository.appendEquityPoints(
+      await this.backtestRunRepository.finalizeRun({
         runId,
-        equityPoints.slice(i, i + RunBacktestUseCase.EQUITY_BATCH_SIZE),
+        metrics: {
+          totalTrades: metrics.totalTrades,
+          winningTrades: metrics.winningTrades,
+          losingTrades: metrics.losingTrades,
+          winRate: metrics.winRate,
+          totalPnL: metrics.totalPnL,
+          maxDrawdown: metrics.maxDrawdown,
+          sharpeRatio: metrics.sharpeRatio,
+          profitFactor: metrics.profitFactor,
+          avgWin: metrics.avgWin,
+          avgLoss: metrics.avgLoss,
+        },
+        trades: closedTrades,
+      });
+
+      this.logger.log(
+        `Completed backtest runId=${runId} processedCandles=${processedCandles} generatedSignals=${generatedSignals} closedTrades=${closedTrades.length}`,
+        RunBacktestUseCase.LOG_CONTEXT,
       );
+
+      return {
+        runId,
+        symbol: command.symbol,
+        fromInterval: fromInterval.toString(),
+        toInterval: toInterval.toString(),
+        processedCandles,
+        generatedSignals,
+        metrics,
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      await this.backtestRunRepository.failRun(runId, message);
+      this.logger.error(
+        `Backtest failed runId=${runId} reason=${message}`,
+        undefined,
+        RunBacktestUseCase.LOG_CONTEXT,
+      );
+      throw error;
     }
-
-    await this.backtestRunRepository.finalizeRun({
-      runId,
-      metrics: {
-        totalTrades: metrics.totalTrades,
-        winningTrades: metrics.winningTrades,
-        losingTrades: metrics.losingTrades,
-        winRate: metrics.winRate,
-        totalPnL: metrics.totalPnL,
-        maxDrawdown: metrics.maxDrawdown,
-        sharpeRatio: metrics.sharpeRatio,
-        profitFactor: metrics.profitFactor,
-        avgWin: metrics.avgWin,
-        avgLoss: metrics.avgLoss,
-      },
-      trades: closedTrades,
-    });
-
-    this.logger.log(
-      `Completed backtest runId=${runId} processedCandles=${processedCandles} generatedSignals=${generatedSignals} closedTrades=${closedTrades.length}`,
-      RunBacktestUseCase.LOG_CONTEXT,
-    );
-
-    return {
-      runId,
-      symbol: command.symbol,
-      fromInterval: fromInterval.toString(),
-      toInterval: toInterval.toString(),
-      processedCandles,
-      generatedSignals,
-      metrics,
-    };
   }
 
   private buildEquityPoints(

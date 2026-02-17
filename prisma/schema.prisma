@@ -71,6 +71,8 @@ model BacktestRun {
   symbol                String
   interval              String   // e.g., "1m"
   strategyVersion       String   // e.g., "fvg-bos-v1"
+  status                String   @default("pending") // pending, running, completed, failed
+  errorMessage          String?
   config                Json     // BacktestConfig serialized
   startTime             BigInt   // ms
   endTime               BigInt   // ms

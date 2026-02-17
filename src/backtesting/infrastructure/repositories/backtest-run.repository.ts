@@ -39,6 +39,8 @@ export class BacktestRunRepository implements IBacktestRunRepository {
           },
           trades: [],
         }),
+        status: 'running',
+        errorMessage: null,
       },
       select: { id: true },
     });
@@ -91,6 +93,8 @@ export class BacktestRunRepository implements IBacktestRunRepository {
       this.prisma.backtestRun.update({
         where: { id: input.runId },
         data: {
+          status: 'completed',
+          errorMessage: null,
           totalTrades: input.metrics.totalTrades,
           winningTrades: input.metrics.winningTrades,
           losingTrades: input.metrics.losingTrades,
@@ -116,6 +120,16 @@ export class BacktestRunRepository implements IBacktestRunRepository {
     ]);
   }
 
+  public async failRun(runId: string, errorMessage: string): Promise<void> {
+    await this.prisma.backtestRun.update({
+      where: { id: runId },
+      data: {
+        status: 'failed',
+        errorMessage,
+      },
+    });
+  }
+
   public async saveRun(input: SaveBacktestRunInput): Promise<string> {
     const signals = this.backtestRunMapper.toPersistenceSignals(input);
     const equityPoints =
@@ -124,6 +138,8 @@ export class BacktestRunRepository implements IBacktestRunRepository {
     const run = await this.prisma.backtestRun.create({
       data: {
         ...this.backtestRunMapper.toPersistenceRun(input),
+        status: 'completed',
+        errorMessage: null,
         trades: {
           create: this.backtestRunMapper.toPersistenceTrades(input),
         },
@@ -245,6 +261,8 @@ export class BacktestRunRepository implements IBacktestRunRepository {
             symbol: string;
             interval: string;
             strategyVersion: string;
+            status: string;
+            errorMessage: string | null;
             startTime: bigint | number | string;
             endTime: bigint | number | string;
             totalTrades: number;
@@ -258,6 +276,8 @@ export class BacktestRunRepository implements IBacktestRunRepository {
             "symbol",
             "interval",
             "strategyVersion",
+            "status",
+            "errorMessage",
             "startTime",
             "endTime",
             "totalTrades",
@@ -278,6 +298,8 @@ export class BacktestRunRepository implements IBacktestRunRepository {
           symbol: row.symbol,
           interval: row.interval,
           strategyVersion: row.strategyVersion,
+          status: row.status as 'pending' | 'running' | 'completed' | 'failed',
+          errorMessage: row.errorMessage,
           startTime: row.startTime.toString(),
           endTime: row.endTime.toString(),
           totalTrades: row.totalTrades,

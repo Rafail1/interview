@@ -381,6 +381,8 @@ describe('Backtesting (e2e)', () => {
       symbol: 'BTCUSDT',
       interval: '15m',
       strategyVersion: 'fvg-bos-v1',
+      status: 'completed',
+      errorMessage: null,
       config: { fromInterval: '1m', toInterval: '15m' },
       startTime: '1704067200000',
       endTime: '1706745599000',
@@ -407,6 +409,7 @@ describe('Backtesting (e2e)', () => {
     expect(getBacktestRunUseCaseMock.execute).toHaveBeenCalledWith('run-e2e-1');
     expect(res.body).toHaveProperty('id', 'run-e2e-1');
     expect(res.body).toHaveProperty('symbol', 'BTCUSDT');
+    expect(res.body).toHaveProperty('status', 'completed');
     expect(res.body).toHaveProperty('signalsCount', 4);
     expect(res.body).toHaveProperty('equityPointsCount', 3);
   });
@@ -425,6 +428,8 @@ describe('Backtesting (e2e)', () => {
       symbol: 'BTCUSDT',
       interval: '15m',
       strategyVersion: 'fvg-bos-v1',
+      status: 'completed',
+      errorMessage: null,
       startTime: '1704067200000',
       endTime: '1706745599000',
       totalTrades: 2,
@@ -450,6 +455,7 @@ describe('Backtesting (e2e)', () => {
       'run-e2e-1',
     );
     expect(res.body).toHaveProperty('id', 'run-e2e-1');
+    expect(res.body).toHaveProperty('status', 'completed');
     expect(res.body).toHaveProperty('lastEquity', '10012.30');
   });
 
@@ -605,6 +611,8 @@ describe('Backtesting (e2e)', () => {
           symbol: 'ETHUSDT',
           interval: '15m',
           strategyVersion: 'fvg-bos-v1',
+          status: 'completed',
+          errorMessage: null,
           startTime: '1704067200000',
           endTime: '1706745599000',
           totalTrades: 3,

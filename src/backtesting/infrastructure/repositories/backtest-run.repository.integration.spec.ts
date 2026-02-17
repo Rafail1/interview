@@ -105,6 +105,8 @@ maybeDescribe('BacktestRunRepository integration', () => {
     expect(run).toHaveProperty('symbol', 'BTCUSDT');
     expect(run).toHaveProperty('interval', '15m');
     expect(run).toHaveProperty('strategyVersion', 'fvg-bos-v1');
+    expect(run).toHaveProperty('status', 'completed');
+    expect(run).toHaveProperty('errorMessage', null);
     expect(run).toHaveProperty('startTime', '1704067200000');
     expect(run).toHaveProperty('endTime', '1704067319999');
     expect(run).toHaveProperty('totalTrades', 2);
@@ -191,6 +193,8 @@ maybeDescribe('BacktestRunRepository integration', () => {
 
     expect(run).not.toBeNull();
     expect(run).toHaveProperty('id', runId);
+    expect(run).toHaveProperty('status', 'completed');
+    expect(run).toHaveProperty('errorMessage', null);
     expect(run).toHaveProperty('totalTrades', 1);
     expect(run).toHaveProperty('signalsCount', 1);
     expect(run).toHaveProperty('equityPointsCount', 2);
@@ -209,6 +213,28 @@ maybeDescribe('BacktestRunRepository integration', () => {
 
   it('returns null when run does not exist', async () => {
     await expect(repository.findById(randomUUID())).resolves.toBeNull();
+  });
+
+  it('marks run as failed and stores error message', async () => {
+    const runId = await repository.startRun({
+      symbol: 'BTCUSDT',
+      interval: '15m',
+      strategyVersion: 'fvg-bos-v1',
+      config: {
+        fromInterval: '1m',
+        toInterval: '15m',
+      },
+      startTimeMs: 1704067200000n,
+      endTimeMs: 1704067319999n,
+    });
+    createdRunIds.push(runId);
+
+    await repository.failRun(runId, 'simulated failure');
+    const run = await repository.findById(runId);
+
+    expect(run).not.toBeNull();
+    expect(run).toHaveProperty('status', 'failed');
+    expect(run).toHaveProperty('errorMessage', 'simulated failure');
   });
 
   it('sorts listRuns by totalPnL numerically', async () => {
@@ -771,6 +797,8 @@ maybeDescribe('BacktestRunRepository integration', () => {
 
     expect(summary).not.toBeNull();
     expect(summary).toHaveProperty('id', runId);
+    expect(summary).toHaveProperty('status', 'completed');
+    expect(summary).toHaveProperty('errorMessage', null);
     expect(summary).toHaveProperty('signalsCount', 1);
     expect(summary).toHaveProperty('equityPointsCount', 2);
     expect(summary).toHaveProperty('lastEquity', '10012.3');
