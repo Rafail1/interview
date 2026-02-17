@@ -63,6 +63,9 @@ export class RunBacktestResponseDto {
   @ApiProperty()
   readonly generatedSignals: number;
 
+  @ApiProperty({ enum: ['completed', 'cancelled'] })
+  readonly status: 'completed' | 'cancelled';
+
   @ApiProperty({ type: BacktestMetricsDto })
   readonly metrics: BacktestMetricsDto;
 }

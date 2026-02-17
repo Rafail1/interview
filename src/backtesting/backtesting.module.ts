@@ -3,6 +3,7 @@ import { GetImportJobStatusUseCase } from './application/use-cases/get-import-jo
 import { GetImportQueueOverviewUseCase } from './application/use-cases/get-import-queue-overview.use-case';
 import { ImportBinanceDataUseCase } from './application/use-cases/import-binance-data.use-case';
 import { GetBacktestRunUseCase } from './application/use-cases/get-backtest-run.use-case';
+import { CancelBacktestRunUseCase } from './application/use-cases/cancel-backtest-run.use-case';
 import { GetBacktestRunSummaryUseCase } from './application/use-cases/get-backtest-run-summary.use-case';
 import { GetBacktestRunSignalsUseCase } from './application/use-cases/get-backtest-run-signals.use-case';
 import { GetBacktestRunEquityUseCase } from './application/use-cases/get-backtest-run-equity.use-case';
@@ -41,6 +42,7 @@ import { LOGGER_TOKEN } from 'src/core/interfaces/logger.interface';
     GetImportJobStatusUseCase,
     GetImportQueueOverviewUseCase,
     GetBacktestRunUseCase,
+    CancelBacktestRunUseCase,
     GetBacktestRunSummaryUseCase,
     GetBacktestRunSignalsUseCase,
     GetBacktestRunEquityUseCase,

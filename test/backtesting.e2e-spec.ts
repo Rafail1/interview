@@ -5,6 +5,7 @@ import { GetImportJobStatusUseCase } from '../src/backtesting/application/use-ca
 import { GetImportQueueOverviewUseCase } from '../src/backtesting/application/use-cases/get-import-queue-overview.use-case';
 import { ImportBinanceDataUseCase } from '../src/backtesting/application/use-cases/import-binance-data.use-case';
 import { GetBacktestRunUseCase } from '../src/backtesting/application/use-cases/get-backtest-run.use-case';
+import { CancelBacktestRunUseCase } from '../src/backtesting/application/use-cases/cancel-backtest-run.use-case';
 import { GetBacktestRunSummaryUseCase } from '../src/backtesting/application/use-cases/get-backtest-run-summary.use-case';
 import { GetBacktestRunSignalsUseCase } from '../src/backtesting/application/use-cases/get-backtest-run-signals.use-case';
 import { GetBacktestRunEquityUseCase } from '../src/backtesting/application/use-cases/get-backtest-run-equity.use-case';
@@ -28,6 +29,10 @@ describe('Backtesting (e2e)', () => {
   };
 
   const runBacktestUseCaseMock = {
+    execute: jest.fn(),
+  };
+
+  const cancelBacktestRunUseCaseMock = {
     execute: jest.fn(),
   };
 
@@ -70,6 +75,10 @@ describe('Backtesting (e2e)', () => {
         {
           provide: RunBacktestUseCase,
           useValue: runBacktestUseCaseMock,
+        },
+        {
+          provide: CancelBacktestRunUseCase,
+          useValue: cancelBacktestRunUseCaseMock,
         },
         {
           provide: GetBacktestRunUseCase,
@@ -331,6 +340,7 @@ describe('Backtesting (e2e)', () => {
       symbol: 'BTCUSDT',
       fromInterval: '1m',
       toInterval: '15m',
+      status: 'completed',
       processedCandles: 100,
       generatedSignals: 4,
       metrics: {
@@ -371,8 +381,34 @@ describe('Backtesting (e2e)', () => {
       expect.objectContaining(payload),
     );
     expect(res.body).toHaveProperty('runId', 'run-e2e-1');
+    expect(res.body).toHaveProperty('status', 'completed');
     expect(res.body).toHaveProperty('symbol', 'BTCUSDT');
     expect(res.body).toHaveProperty('metrics.totalTrades', 2);
+  });
+
+  it('POST /backtesting/run/:runId/cancel requests cancellation', async () => {
+    cancelBacktestRunUseCaseMock.execute.mockResolvedValue({
+      runId: 'run-e2e-1',
+      status: 'cancelled',
+    });
+
+    const res = await request(app.getHttpServer())
+      .post('/backtesting/run/run-e2e-1/cancel')
+      .expect(201);
+
+    expect(cancelBacktestRunUseCaseMock.execute).toHaveBeenCalledWith('run-e2e-1');
+    expect(res.body).toEqual({
+      runId: 'run-e2e-1',
+      status: 'cancelled',
+    });
+  });
+
+  it('POST /backtesting/run/:runId/cancel returns 404 when run not found', async () => {
+    cancelBacktestRunUseCaseMock.execute.mockResolvedValueOnce(null);
+
+    await request(app.getHttpServer())
+      .post('/backtesting/run/missing-run/cancel')
+      .expect(404);
   });
 
   it('GET /backtesting/run/:runId returns persisted run details', async () => {

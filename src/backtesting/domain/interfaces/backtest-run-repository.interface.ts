@@ -83,7 +83,7 @@ export type BacktestRunView = {
   symbol: string;
   interval: string;
   strategyVersion: string;
-  status: 'pending' | 'running' | 'completed' | 'failed';
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
   errorMessage: string | null;
   config: Record<string, unknown>;
   startTime: string;
@@ -120,7 +120,7 @@ export type BacktestRunListItemView = {
   symbol: string;
   interval: string;
   strategyVersion: string;
-  status: 'pending' | 'running' | 'completed' | 'failed';
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
   errorMessage: string | null;
   startTime: string;
   endTime: string;
@@ -183,7 +183,7 @@ export type BacktestRunSummaryView = {
   symbol: string;
   interval: string;
   strategyVersion: string;
-  status: 'pending' | 'running' | 'completed' | 'failed';
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
   errorMessage: string | null;
   startTime: string;
   endTime: string;
@@ -212,6 +212,8 @@ export interface IBacktestRunRepository {
     runId: string,
     points: BacktestEquityPointPersistenceInput[],
   ): Promise<void>;
+  cancelRun(runId: string): Promise<boolean>;
+  isRunCancelled(runId: string): Promise<boolean>;
   finalizeRun(input: FinalizeBacktestRunInput): Promise<void>;
   failRun(runId: string, errorMessage: string): Promise<void>;
   saveRun(input: SaveBacktestRunInput): Promise<string>;

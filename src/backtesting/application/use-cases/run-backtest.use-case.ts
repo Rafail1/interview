@@ -32,6 +32,7 @@ import { Timestamp } from 'src/backtesting/domain/value-objects/timestamp.value-
 export class RunBacktestUseCase {
   private static readonly LOG_CONTEXT = 'RunBacktestUseCase';
   private static readonly DEFAULT_PROGRESS_LOG_EVERY = 10_000;
+  private static readonly CANCEL_CHECK_EVERY = 500;
   private static readonly SIGNALS_BATCH_SIZE = 1_000;
   private static readonly EQUITY_BATCH_SIZE = 1_000;
   private readonly progressLogEvery: number;
@@ -87,6 +88,7 @@ export class RunBacktestUseCase {
 
     let processedCandles = 0;
     let generatedSignals = 0;
+    let wasCancelled = false;
     let lastCandle: Parameters<IStrategyEvaluator['evaluate']>[0] | null = null;
     const useSameTimeframeContext = fromInterval.equals(toInterval);
     let higherTimeframeIterator: AsyncIterator<
@@ -140,6 +142,14 @@ export class RunBacktestUseCase {
       )) {
         processedCandles += 1;
         lastCandle = candle;
+
+        if (
+          processedCandles % RunBacktestUseCase.CANCEL_CHECK_EVERY === 0 &&
+          (await this.backtestRunRepository.isRunCancelled(runId))
+        ) {
+          wasCancelled = true;
+          break;
+        }
 
         if (processedCandles % this.progressLogEvery === 0) {
           this.logger.log(
@@ -227,6 +237,27 @@ export class RunBacktestUseCase {
         );
       }
 
+      if (
+        wasCancelled ||
+        (await this.backtestRunRepository.isRunCancelled(runId))
+      ) {
+        await this.backtestRunRepository.cancelRun(runId);
+        this.logger.warn(
+          `Cancelled backtest runId=${runId} processedCandles=${processedCandles} generatedSignals=${generatedSignals}`,
+          RunBacktestUseCase.LOG_CONTEXT,
+        );
+        return {
+          runId,
+          symbol: command.symbol,
+          fromInterval: fromInterval.toString(),
+          toInterval: toInterval.toString(),
+          processedCandles,
+          generatedSignals,
+          status: 'cancelled' as const,
+          metrics,
+        };
+      }
+
       await this.backtestRunRepository.finalizeRun({
         runId,
         metrics: {
@@ -256,6 +287,7 @@ export class RunBacktestUseCase {
         toInterval: toInterval.toString(),
         processedCandles,
         generatedSignals,
+        status: 'completed' as const,
         metrics,
       };
     } catch (error) {

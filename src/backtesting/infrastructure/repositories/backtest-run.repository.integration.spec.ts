@@ -237,6 +237,28 @@ maybeDescribe('BacktestRunRepository integration', () => {
     expect(run).toHaveProperty('errorMessage', 'simulated failure');
   });
 
+  it('cancels a running run and reports cancelled status', async () => {
+    const runId = await repository.startRun({
+      symbol: 'BTCUSDT',
+      interval: '15m',
+      strategyVersion: 'fvg-bos-v1',
+      config: {
+        fromInterval: '1m',
+        toInterval: '15m',
+      },
+      startTimeMs: 1704067200000n,
+      endTimeMs: 1704067319999n,
+    });
+    createdRunIds.push(runId);
+
+    await expect(repository.cancelRun(runId)).resolves.toBe(true);
+    await expect(repository.isRunCancelled(runId)).resolves.toBe(true);
+
+    const run = await repository.findById(runId);
+    expect(run).not.toBeNull();
+    expect(run).toHaveProperty('status', 'cancelled');
+  });
+
   it('sorts listRuns by totalPnL numerically', async () => {
     const symbol = `TST${Date.now()}`;
 

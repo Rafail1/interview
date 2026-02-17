@@ -7,6 +7,7 @@ type UseCaseMocks = {
   getStatusUseCaseMock: { execute: jest.Mock };
   getQueueOverviewUseCaseMock: { execute: jest.Mock };
   runBacktestUseCaseMock: { execute: jest.Mock };
+  cancelBacktestRunUseCaseMock: { execute: jest.Mock };
   getBacktestRunUseCaseMock: { execute: jest.Mock };
   getBacktestRunSummaryUseCaseMock: { execute: jest.Mock };
   getBacktestRunSignalsUseCaseMock: { execute: jest.Mock };
@@ -20,6 +21,7 @@ function makeController(overrides?: Partial<UseCaseMocks>) {
     getStatusUseCaseMock: { execute: jest.fn() },
     getQueueOverviewUseCaseMock: { execute: jest.fn() },
     runBacktestUseCaseMock: { execute: jest.fn() },
+    cancelBacktestRunUseCaseMock: { execute: jest.fn() },
     getBacktestRunUseCaseMock: { execute: jest.fn() },
     getBacktestRunSummaryUseCaseMock: { execute: jest.fn() },
     getBacktestRunSignalsUseCaseMock: { execute: jest.fn() },
@@ -33,6 +35,7 @@ function makeController(overrides?: Partial<UseCaseMocks>) {
     mocks.getStatusUseCaseMock as any,
     mocks.getQueueOverviewUseCaseMock as any,
     mocks.runBacktestUseCaseMock as any,
+    mocks.cancelBacktestRunUseCaseMock as any,
     mocks.getBacktestRunUseCaseMock as any,
     mocks.getBacktestRunSummaryUseCaseMock as any,
     mocks.getBacktestRunSignalsUseCaseMock as any,
@@ -201,6 +204,7 @@ describe('BacktestingController', () => {
           symbol: 'BTCUSDT',
           fromInterval: '1m',
           toInterval: '15m',
+          status: 'completed',
           processedCandles: 100,
           generatedSignals: 4,
           metrics: {
@@ -233,6 +237,7 @@ describe('BacktestingController', () => {
 
     expect(mocks.runBacktestUseCaseMock.execute).toHaveBeenCalled();
     expect(result).toHaveProperty('runId', 'run-1');
+    expect(result).toHaveProperty('status', 'completed');
     expect(result).toHaveProperty('symbol', 'BTCUSDT');
     expect(result).toHaveProperty('metrics.totalTrades', 2);
   });
@@ -276,6 +281,39 @@ describe('BacktestingController', () => {
     expect(result).toHaveProperty('status', 'completed');
     expect(result).toHaveProperty('signalsCount', 4);
     expect(result).toHaveProperty('equityPointsCount', 3);
+  });
+
+  it('cancelBacktestRun delegates to use-case and returns status', async () => {
+    const { controller, mocks } = makeController({
+      cancelBacktestRunUseCaseMock: {
+        execute: jest.fn().mockResolvedValue({
+          runId: 'run-1',
+          status: 'cancelled',
+        }),
+      },
+    });
+
+    const result = await controller.cancelBacktestRun('run-1');
+
+    expect(mocks.cancelBacktestRunUseCaseMock.execute).toHaveBeenCalledWith(
+      'run-1',
+    );
+    expect(result).toEqual({
+      runId: 'run-1',
+      status: 'cancelled',
+    });
+  });
+
+  it('cancelBacktestRun throws NotFoundException when run missing', async () => {
+    const { controller } = makeController({
+      cancelBacktestRunUseCaseMock: {
+        execute: jest.fn().mockResolvedValue(null),
+      },
+    });
+
+    await expect(controller.cancelBacktestRun('missing-run')).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
   });
 
   it('getBacktestRun throws NotFoundException when run missing', async () => {

@@ -13,8 +13,10 @@ class BacktestRunListItemDto {
   @ApiProperty()
   readonly strategyVersion: string;
 
-  @ApiProperty({ enum: ['pending', 'running', 'completed', 'failed'] })
-  readonly status: 'pending' | 'running' | 'completed' | 'failed';
+  @ApiProperty({
+    enum: ['pending', 'running', 'completed', 'failed', 'cancelled'],
+  })
+  readonly status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
 
   @ApiProperty({ nullable: true })
   readonly errorMessage: string | null;

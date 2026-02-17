@@ -85,6 +85,8 @@ describe('RunBacktestUseCase', () => {
       startRun: jest.fn().mockResolvedValue('run-1'),
       appendSignals: jest.fn().mockResolvedValue(undefined),
       appendEquityPoints: jest.fn().mockResolvedValue(undefined),
+      cancelRun: jest.fn().mockResolvedValue(true),
+      isRunCancelled: jest.fn().mockResolvedValue(false),
       finalizeRun: jest.fn().mockResolvedValue(undefined),
       failRun: jest.fn().mockResolvedValue(undefined),
     } as any;
@@ -157,6 +159,7 @@ describe('RunBacktestUseCase', () => {
       }),
     );
     expect(result).toHaveProperty('runId', 'run-1');
+    expect(result).toHaveProperty('status', 'completed');
     expect(result).toHaveProperty('processedCandles', 2);
     expect(result).toHaveProperty('generatedSignals', 1);
     expect(result).toHaveProperty('metrics.totalTrades', 0);
@@ -209,6 +212,8 @@ describe('RunBacktestUseCase', () => {
       startRun: jest.fn().mockResolvedValue('run-2'),
       appendSignals: jest.fn().mockResolvedValue(undefined),
       appendEquityPoints: jest.fn().mockResolvedValue(undefined),
+      cancelRun: jest.fn().mockResolvedValue(true),
+      isRunCancelled: jest.fn().mockResolvedValue(false),
       finalizeRun: jest.fn().mockResolvedValue(undefined),
       failRun: jest.fn().mockResolvedValue(undefined),
     } as any;
@@ -272,6 +277,8 @@ describe('RunBacktestUseCase', () => {
       startRun: jest.fn().mockResolvedValue('run-3'),
       appendSignals: jest.fn().mockResolvedValue(undefined),
       appendEquityPoints: jest.fn().mockResolvedValue(undefined),
+      cancelRun: jest.fn().mockResolvedValue(true),
+      isRunCancelled: jest.fn().mockResolvedValue(false),
       finalizeRun: jest.fn().mockResolvedValue(undefined),
       failRun: jest.fn().mockResolvedValue(undefined),
     } as any;
@@ -329,6 +336,8 @@ describe('RunBacktestUseCase', () => {
       startRun: jest.fn().mockResolvedValue('run-failed'),
       appendSignals: jest.fn().mockResolvedValue(undefined),
       appendEquityPoints: jest.fn().mockResolvedValue(undefined),
+      cancelRun: jest.fn().mockResolvedValue(true),
+      isRunCancelled: jest.fn().mockResolvedValue(false),
       finalizeRun: jest.fn().mockResolvedValue(undefined),
       failRun: jest.fn().mockResolvedValue(undefined),
     } as any;
@@ -356,6 +365,65 @@ describe('RunBacktestUseCase', () => {
     expect(backtestRunRepositoryMock.failRun).toHaveBeenCalledWith(
       'run-failed',
       'boom',
+    );
+    expect(backtestRunRepositoryMock.finalizeRun).not.toHaveBeenCalled();
+  });
+
+  it('stops processing and returns cancelled status when run is cancelled', async () => {
+    const candles = [
+      makeCandle(1_700_000_000_000, '100'),
+      makeCandle(1_700_000_060_000, '101'),
+      makeCandle(1_700_000_120_000, '102'),
+    ];
+
+    const marketDataRepositoryMock = {
+      getCandleStream: jest.fn().mockImplementation(() => stream(candles)),
+      getAggregatedStream: jest.fn(),
+    } as any;
+
+    const strategyEvaluatorMock = {
+      reset: jest.fn(),
+      evaluate: jest.fn().mockReturnValue([]),
+    } as any;
+
+    const tradeSimulatorMock = {
+      reset: jest.fn(),
+      getOpenTrade: jest.fn().mockReturnValue(null),
+      processSignal: jest.fn(),
+      closeOpenTrade: jest.fn(),
+      getClosedTrades: jest.fn().mockReturnValue([]),
+    } as any;
+
+    const backtestRunRepositoryMock = {
+      startRun: jest.fn().mockResolvedValue('run-cancelled'),
+      appendSignals: jest.fn().mockResolvedValue(undefined),
+      appendEquityPoints: jest.fn().mockResolvedValue(undefined),
+      cancelRun: jest.fn().mockResolvedValue(true),
+      isRunCancelled: jest.fn().mockResolvedValue(true),
+      finalizeRun: jest.fn().mockResolvedValue(undefined),
+      failRun: jest.fn().mockResolvedValue(undefined),
+    } as any;
+
+    const useCase = new RunBacktestUseCase(
+      configServiceMock as any,
+      marketDataRepositoryMock,
+      strategyEvaluatorMock,
+      tradeSimulatorMock,
+      backtestRunRepositoryMock,
+      loggerMock as any,
+    );
+
+    const result = await useCase.execute({
+      symbol: 'BTCUSDT',
+      startDate: '2024-01-01T00:00:00.000Z',
+      endDate: '2024-01-01T00:10:00.000Z',
+      fromInterval: '1m',
+      toInterval: '1m',
+    });
+
+    expect(result).toHaveProperty('status', 'cancelled');
+    expect(backtestRunRepositoryMock.cancelRun).toHaveBeenCalledWith(
+      'run-cancelled',
     );
     expect(backtestRunRepositoryMock.finalizeRun).not.toHaveBeenCalled();
   });

@@ -84,6 +84,40 @@ export class BacktestRunRepository implements IBacktestRunRepository {
     });
   }
 
+  public async cancelRun(runId: string): Promise<boolean> {
+    const result = await this.prisma.backtestRun.updateMany({
+      where: {
+        id: runId,
+        status: {
+          in: ['pending', 'running'],
+        },
+      },
+      data: {
+        status: 'cancelled',
+        errorMessage: null,
+      },
+    });
+
+    if (result.count > 0) {
+      return true;
+    }
+
+    const run = await this.prisma.backtestRun.findUnique({
+      where: { id: runId },
+      select: { id: true },
+    });
+    return run !== null;
+  }
+
+  public async isRunCancelled(runId: string): Promise<boolean> {
+    const run = await this.prisma.backtestRun.findUnique({
+      where: { id: runId },
+      select: { status: true },
+    });
+
+    return run?.status === 'cancelled';
+  }
+
   public async finalizeRun(input: FinalizeBacktestRunInput): Promise<void> {
     const tradeRows = this.backtestRunMapper.toPersistenceTradesBatch(
       input.trades,
@@ -298,7 +332,12 @@ export class BacktestRunRepository implements IBacktestRunRepository {
           symbol: row.symbol,
           interval: row.interval,
           strategyVersion: row.strategyVersion,
-          status: row.status as 'pending' | 'running' | 'completed' | 'failed',
+          status: row.status as
+            | 'pending'
+            | 'running'
+            | 'completed'
+            | 'failed'
+            | 'cancelled',
           errorMessage: row.errorMessage,
           startTime: row.startTime.toString(),
           endTime: row.endTime.toString(),
