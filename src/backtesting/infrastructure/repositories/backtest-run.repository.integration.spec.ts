@@ -126,6 +126,87 @@ maybeDescribe('BacktestRunRepository integration', () => {
     ).resolves.toBe(1);
   });
 
+  it('persists run via startRun + append + finalize flow', async () => {
+    const trade = Trade.create(
+      randomUUID(),
+      Timestamp.fromMs(1704067200000),
+      Price.from('42250.10'),
+      '0.02',
+      'BUY',
+    );
+    trade.close(Timestamp.fromMs(1704067259999), Price.from('42270.00'));
+
+    const runId = await repository.startRun({
+      symbol: 'BTCUSDT',
+      interval: '15m',
+      strategyVersion: 'fvg-bos-v1',
+      config: {
+        fromInterval: '1m',
+        toInterval: '15m',
+      },
+      startTimeMs: 1704067200000n,
+      endTimeMs: 1704067319999n,
+    });
+    createdRunIds.push(runId);
+
+    await repository.appendSignals(runId, [
+      {
+        timestampMs: 1704067200000n,
+        signalType: 'BUY',
+        reason: 'step_flow_signal',
+        price: '42250.10',
+        metadata: { source: 'start-append-finalize' },
+      },
+    ]);
+    await repository.appendEquityPoints(runId, [
+      {
+        timestampMs: 1704067200000n,
+        equity: '10000',
+        drawdown: '0',
+      },
+      {
+        timestampMs: 1704067259999n,
+        equity: '10019.9',
+        drawdown: '0',
+      },
+    ]);
+    await repository.finalizeRun({
+      runId,
+      metrics: {
+        totalTrades: 1,
+        winningTrades: 1,
+        losingTrades: 0,
+        winRate: '100',
+        totalPnL: '19.9',
+        maxDrawdown: '0',
+        sharpeRatio: '0.5',
+        profitFactor: '99.99',
+        avgWin: '19.9',
+        avgLoss: '0',
+      },
+      trades: [trade],
+    });
+
+    const run = await repository.findById(runId);
+
+    expect(run).not.toBeNull();
+    expect(run).toHaveProperty('id', runId);
+    expect(run).toHaveProperty('totalTrades', 1);
+    expect(run).toHaveProperty('signalsCount', 1);
+    expect(run).toHaveProperty('equityPointsCount', 2);
+    expect(run?.trades).toHaveLength(1);
+
+    await expect(
+      prisma.signalEvent.count({ where: { backtestRunId: runId } }),
+    ).resolves.toBe(1);
+    await expect(
+      prisma.equityPoint.count({ where: { backtestRunId: runId } }),
+    ).resolves.toBe(2);
+    await expect(
+      prisma.backtestTrade.count({ where: { backtestRunId: runId } }),
+    ).resolves.toBe(1);
+  });
+
   it('returns null when run does not exist', async () => {
     await expect(repository.findById(randomUUID())).resolves.toBeNull();
   });

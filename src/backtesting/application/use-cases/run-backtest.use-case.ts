@@ -32,6 +32,8 @@ import { Timestamp } from 'src/backtesting/domain/value-objects/timestamp.value-
 export class RunBacktestUseCase {
   private static readonly LOG_CONTEXT = 'RunBacktestUseCase';
   private static readonly DEFAULT_PROGRESS_LOG_EVERY = 10_000;
+  private static readonly SIGNALS_BATCH_SIZE = 1_000;
+  private static readonly EQUITY_BATCH_SIZE = 1_000;
   private readonly progressLogEvery: number;
 
   constructor(
@@ -75,7 +77,7 @@ export class RunBacktestUseCase {
       command.rewardRatio ?? 2,
     );
     const initialBalance = command.initialBalance ?? 10_000;
-    const persistedSignals: Array<{
+    const signalsBuffer: Array<{
       timestampMs: bigint;
       signalType: 'BUY' | 'SELL' | 'INVALID';
       reason: string;
@@ -114,6 +116,21 @@ export class RunBacktestUseCase {
       `Starting backtest symbol=${command.symbol} from=${fromInterval.toString()} to=${toInterval.toString()} startMs=${start.toMs().toString()} endMs=${end.toMs().toString()}`,
       RunBacktestUseCase.LOG_CONTEXT,
     );
+
+    const runId = await this.backtestRunRepository.startRun({
+      symbol: command.symbol,
+      interval: toInterval.toString(),
+      strategyVersion: 'fvg-bos-v1',
+      config: {
+        fromInterval: fromInterval.toString(),
+        toInterval: toInterval.toString(),
+        initialBalance,
+        riskPercent: command.riskPercent ?? 2,
+        rewardRatio: command.rewardRatio ?? 2,
+      },
+      startTimeMs: start.toMs(),
+      endTimeMs: end.toMs(),
+    });
 
     for await (const candle of this.marketDataRepository.getCandleStream(
       command.symbol,
@@ -156,13 +173,17 @@ export class RunBacktestUseCase {
       generatedSignals += signals.length;
 
       for (const signal of signals) {
-        persistedSignals.push({
+        signalsBuffer.push({
           timestampMs: signal.getTime().toMs(),
           signalType: signal.getType(),
           reason: signal.getReason(),
           price: signal.getPrice().toString(),
           metadata: signal.getMetadata(),
         });
+        if (signalsBuffer.length >= RunBacktestUseCase.SIGNALS_BATCH_SIZE) {
+          await this.backtestRunRepository.appendSignals(runId, signalsBuffer);
+          signalsBuffer.length = 0;
+        }
 
         const existing = this.tradeSimulator.getOpenTrade();
         if (existing && signal.getType() !== 'INVALID') {
@@ -176,6 +197,10 @@ export class RunBacktestUseCase {
       this.tradeSimulator.closeOpenTrade(lastCandle, 'end_of_backtest');
     }
 
+    if (signalsBuffer.length > 0) {
+      await this.backtestRunRepository.appendSignals(runId, signalsBuffer);
+    }
+
     const closedTrades = this.tradeSimulator.getClosedTrades();
     const metrics = MetricsCalculator.calculateMetrics(
       closedTrades,
@@ -186,19 +211,19 @@ export class RunBacktestUseCase {
       initialBalance,
       start,
     );
-    const runId = await this.backtestRunRepository.saveRun({
-      symbol: command.symbol,
-      interval: toInterval.toString(),
-      strategyVersion: 'fvg-bos-v1',
-      config: {
-        fromInterval: fromInterval.toString(),
-        toInterval: toInterval.toString(),
-        initialBalance,
-        riskPercent: command.riskPercent ?? 2,
-        rewardRatio: command.rewardRatio ?? 2,
-      },
-      startTimeMs: start.toMs(),
-      endTimeMs: end.toMs(),
+    for (
+      let i = 0;
+      i < equityPoints.length;
+      i += RunBacktestUseCase.EQUITY_BATCH_SIZE
+    ) {
+      await this.backtestRunRepository.appendEquityPoints(
+        runId,
+        equityPoints.slice(i, i + RunBacktestUseCase.EQUITY_BATCH_SIZE),
+      );
+    }
+
+    await this.backtestRunRepository.finalizeRun({
+      runId,
       metrics: {
         totalTrades: metrics.totalTrades,
         winningTrades: metrics.winningTrades,
@@ -212,8 +237,6 @@ export class RunBacktestUseCase {
         avgLoss: metrics.avgLoss,
       },
       trades: closedTrades,
-      signals: persistedSignals,
-      equityPoints,
     });
 
     this.logger.log(

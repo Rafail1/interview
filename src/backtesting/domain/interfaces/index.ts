@@ -28,10 +28,14 @@ export {
   type BacktestSignalEventListView,
   type BacktestSignalEventView,
   type BacktestRunView,
+  type BacktestSignalPersistenceInput,
+  type BacktestEquityPointPersistenceInput,
   type BacktestTradeView,
+  type FinalizeBacktestRunInput,
   type GetBacktestRunSeriesInput,
   type ListBacktestRunsInput,
   type SaveBacktestRunInput,
+  type StartBacktestRunInput,
   BACKTEST_RUN_REPOSITORY_TOKEN,
 } from './backtest-run-repository.interface';
 export {

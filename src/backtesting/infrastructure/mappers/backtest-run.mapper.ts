@@ -7,9 +7,11 @@ import {
   SignalEvent,
 } from '@prisma/client';
 import {
+  BacktestEquityPointPersistenceInput,
   BacktestEquityPointView,
   BacktestRunListItemView,
   BacktestRunSummaryView,
+  BacktestSignalPersistenceInput,
   BacktestSignalEventView,
   BacktestRunView,
   BacktestTradeView,
@@ -40,21 +42,19 @@ export class BacktestRunMapper {
   }
 
   public toPersistenceTrades(input: SaveBacktestRunInput) {
-    return input.trades.map((trade) => ({
-      entryTime: trade.getEntryTime().toMs(),
-      exitTime: trade.getExitTime()?.toMs() ?? null,
-      entryPrice: trade.getEntryPrice().toString(),
-      exitPrice: trade.getExitPrice()?.toString() ?? null,
-      quantity: trade.getQuantity().toString(),
-      side: trade.getSide(),
-      pnl: trade.getPnL()?.toString() ?? '0',
-      pnlPercent: trade.getPnLPercent(),
-      status: trade.getStatus(),
-    }));
+    return this.toPersistenceTradesBatch(input.trades);
   }
 
   public toPersistenceSignals(input: SaveBacktestRunInput) {
-    return (input.signals ?? []).map((signal) => ({
+    return this.toPersistenceSignalsBatch(input.signals ?? []);
+  }
+
+  public toPersistenceEquityPoints(input: SaveBacktestRunInput) {
+    return this.toPersistenceEquityPointsBatch(input.equityPoints ?? []);
+  }
+
+  public toPersistenceSignalsBatch(signals: BacktestSignalPersistenceInput[]) {
+    return signals.map((signal) => ({
       timestamp: signal.timestampMs,
       signalType: signal.signalType,
       reason: signal.reason,
@@ -65,11 +65,27 @@ export class BacktestRunMapper {
     }));
   }
 
-  public toPersistenceEquityPoints(input: SaveBacktestRunInput) {
-    return (input.equityPoints ?? []).map((point) => ({
+  public toPersistenceEquityPointsBatch(
+    points: BacktestEquityPointPersistenceInput[],
+  ) {
+    return points.map((point) => ({
       timestamp: point.timestampMs,
       equity: point.equity,
       drawdown: point.drawdown,
+    }));
+  }
+
+  public toPersistenceTradesBatch(trades: SaveBacktestRunInput['trades']) {
+    return trades.map((trade) => ({
+      entryTime: trade.getEntryTime().toMs(),
+      exitTime: trade.getExitTime()?.toMs() ?? null,
+      entryPrice: trade.getEntryPrice().toString(),
+      exitPrice: trade.getExitPrice()?.toString() ?? null,
+      quantity: trade.getQuantity().toString(),
+      side: trade.getSide(),
+      pnl: trade.getPnL()?.toString() ?? '0',
+      pnlPercent: trade.getPnLPercent(),
+      status: trade.getStatus(),
     }));
   }
 

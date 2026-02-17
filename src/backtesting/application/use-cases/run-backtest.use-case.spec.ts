@@ -82,7 +82,10 @@ describe('RunBacktestUseCase', () => {
       getClosedTrades: jest.fn().mockReturnValue([]),
     } as any;
     const backtestRunRepositoryMock = {
-      saveRun: jest.fn().mockResolvedValue('run-1'),
+      startRun: jest.fn().mockResolvedValue('run-1'),
+      appendSignals: jest.fn().mockResolvedValue(undefined),
+      appendEquityPoints: jest.fn().mockResolvedValue(undefined),
+      finalizeRun: jest.fn().mockResolvedValue(undefined),
     } as any;
 
     const useCase = new RunBacktestUseCase(
@@ -120,27 +123,36 @@ describe('RunBacktestUseCase', () => {
       candle2,
       'end_of_backtest',
     );
-    expect(backtestRunRepositoryMock.saveRun).toHaveBeenCalledWith(
+    expect(backtestRunRepositoryMock.startRun).toHaveBeenCalledWith(
       expect.objectContaining({
         symbol: 'BTCUSDT',
         interval: '15m',
         strategyVersion: 'fvg-bos-v1',
-        signals: [
-          expect.objectContaining({
-            signalType: 'BUY',
-            reason: 'test_buy',
-            price: '100',
-          }),
-        ],
       }),
     );
-    const persistedRunPayload =
-      backtestRunRepositoryMock.saveRun.mock.calls[0][0];
-    expect(persistedRunPayload.equityPoints).toHaveLength(1);
-    expect(persistedRunPayload.equityPoints[0]).toEqual(
+    expect(backtestRunRepositoryMock.appendSignals).toHaveBeenCalledWith(
+      'run-1',
+      [
+        expect.objectContaining({
+          signalType: 'BUY',
+          reason: 'test_buy',
+          price: '100',
+        }),
+      ],
+    );
+    expect(backtestRunRepositoryMock.appendEquityPoints).toHaveBeenCalled();
+    const persistedEquityPayload =
+      backtestRunRepositoryMock.appendEquityPoints.mock.calls[0][1];
+    expect(persistedEquityPayload).toHaveLength(1);
+    expect(persistedEquityPayload[0]).toEqual(
       expect.objectContaining({
         equity: '10000',
         drawdown: '0',
+      }),
+    );
+    expect(backtestRunRepositoryMock.finalizeRun).toHaveBeenCalledWith(
+      expect.objectContaining({
+        runId: 'run-1',
       }),
     );
     expect(result).toHaveProperty('runId', 'run-1');
@@ -193,7 +205,10 @@ describe('RunBacktestUseCase', () => {
       getClosedTrades: jest.fn().mockReturnValue([]),
     } as any;
     const backtestRunRepositoryMock = {
-      saveRun: jest.fn().mockResolvedValue('run-2'),
+      startRun: jest.fn().mockResolvedValue('run-2'),
+      appendSignals: jest.fn().mockResolvedValue(undefined),
+      appendEquityPoints: jest.fn().mockResolvedValue(undefined),
+      finalizeRun: jest.fn().mockResolvedValue(undefined),
     } as any;
 
     const useCase = new RunBacktestUseCase(
@@ -224,7 +239,8 @@ describe('RunBacktestUseCase', () => {
       candle2,
       candle2,
     );
-    expect(backtestRunRepositoryMock.saveRun).toHaveBeenCalled();
+    expect(backtestRunRepositoryMock.startRun).toHaveBeenCalled();
+    expect(backtestRunRepositoryMock.finalizeRun).toHaveBeenCalled();
   });
 
   it('falls back to default progress interval when env value is invalid', async () => {
@@ -251,7 +267,10 @@ describe('RunBacktestUseCase', () => {
       getClosedTrades: jest.fn().mockReturnValue([]),
     } as any;
     const backtestRunRepositoryMock = {
-      saveRun: jest.fn().mockResolvedValue('run-3'),
+      startRun: jest.fn().mockResolvedValue('run-3'),
+      appendSignals: jest.fn().mockResolvedValue(undefined),
+      appendEquityPoints: jest.fn().mockResolvedValue(undefined),
+      finalizeRun: jest.fn().mockResolvedValue(undefined),
     } as any;
     const invalidConfigServiceMock = {
       get: jest.fn().mockReturnValue('abc'),

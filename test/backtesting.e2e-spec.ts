@@ -147,6 +147,16 @@ describe('Backtesting (e2e)', () => {
     });
   });
 
+  it('GET /backtesting/health returns health payload', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/backtesting/health')
+      .expect(200);
+
+    expect(res.body).toHaveProperty('status', 'ok');
+    expect(res.body).toHaveProperty('service', 'backtesting');
+    expect(new Date(res.body.timestamp).toString()).not.toBe('Invalid Date');
+  });
+
   it('POST /backtesting/import rejects invalid payload', async () => {
     const badPayload = {
       symbol: 'btc-usdt',

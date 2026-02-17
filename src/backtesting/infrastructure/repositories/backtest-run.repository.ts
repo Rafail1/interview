@@ -1,10 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import {
+  BacktestEquityPointPersistenceInput,
+  BacktestSignalPersistenceInput,
+  FinalizeBacktestRunInput,
   GetBacktestRunSeriesInput,
   IBacktestRunRepository,
   ListBacktestRunsInput,
   SaveBacktestRunInput,
+  StartBacktestRunInput,
 } from 'src/backtesting/domain/interfaces/backtest-run-repository.interface';
 import { PrismaService } from 'src/core/infrastructure/prisma.service';
 import { BacktestRunMapper } from '../mappers/backtest-run.mapper';
@@ -15,6 +19,102 @@ export class BacktestRunRepository implements IBacktestRunRepository {
     private readonly prisma: PrismaService,
     private readonly backtestRunMapper: BacktestRunMapper,
   ) {}
+
+  public async startRun(input: StartBacktestRunInput): Promise<string> {
+    const run = await this.prisma.backtestRun.create({
+      data: {
+        ...this.backtestRunMapper.toPersistenceRun({
+          ...input,
+          metrics: {
+            totalTrades: 0,
+            winningTrades: 0,
+            losingTrades: 0,
+            winRate: '0',
+            totalPnL: '0',
+            maxDrawdown: '0',
+            sharpeRatio: '0',
+            profitFactor: '0',
+            avgWin: '0',
+            avgLoss: '0',
+          },
+          trades: [],
+        }),
+      },
+      select: { id: true },
+    });
+
+    return run.id;
+  }
+
+  public async appendSignals(
+    runId: string,
+    signals: BacktestSignalPersistenceInput[],
+  ): Promise<void> {
+    if (signals.length === 0) {
+      return;
+    }
+
+    await this.prisma.signalEvent.createMany({
+      data: this.backtestRunMapper
+        .toPersistenceSignalsBatch(signals)
+        .map((signal) => ({
+          ...signal,
+          backtestRunId: runId,
+        })),
+    });
+  }
+
+  public async appendEquityPoints(
+    runId: string,
+    points: BacktestEquityPointPersistenceInput[],
+  ): Promise<void> {
+    if (points.length === 0) {
+      return;
+    }
+
+    await this.prisma.equityPoint.createMany({
+      data: this.backtestRunMapper
+        .toPersistenceEquityPointsBatch(points)
+        .map((point) => ({
+          ...point,
+          backtestRunId: runId,
+        })),
+    });
+  }
+
+  public async finalizeRun(input: FinalizeBacktestRunInput): Promise<void> {
+    const tradeRows = this.backtestRunMapper.toPersistenceTradesBatch(
+      input.trades,
+    );
+
+    await this.prisma.$transaction([
+      this.prisma.backtestRun.update({
+        where: { id: input.runId },
+        data: {
+          totalTrades: input.metrics.totalTrades,
+          winningTrades: input.metrics.winningTrades,
+          losingTrades: input.metrics.losingTrades,
+          winRate: Number(input.metrics.winRate),
+          totalPnL: input.metrics.totalPnL,
+          maxDrawdown: input.metrics.maxDrawdown,
+          sharpeRatio: Number(input.metrics.sharpeRatio),
+          profitFactor: Number(input.metrics.profitFactor),
+          avgWin: input.metrics.avgWin,
+          avgLoss: input.metrics.avgLoss,
+        },
+      }),
+      ...(tradeRows.length > 0
+        ? [
+            this.prisma.backtestTrade.createMany({
+              data: tradeRows.map((trade) => ({
+                ...trade,
+                backtestRunId: input.runId,
+              })),
+            }),
+          ]
+        : []),
+    ]);
+  }
 
   public async saveRun(input: SaveBacktestRunInput): Promise<string> {
     const signals = this.backtestRunMapper.toPersistenceSignals(input);

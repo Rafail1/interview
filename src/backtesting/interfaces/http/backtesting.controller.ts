@@ -25,6 +25,7 @@ import { GetBacktestRunEquityUseCase } from 'src/backtesting/application/use-cas
 import { ListBacktestRunsUseCase } from 'src/backtesting/application/use-cases/list-backtest-runs.use-case';
 import { RunBacktestUseCase } from 'src/backtesting/application/use-cases/run-backtest.use-case';
 import { BacktestRunEquityResponseDto } from '../dtos/backtest-run-equity-response.dto';
+import { BacktestingHealthResponseDto } from '../dtos/backtesting-health-response.dto';
 import { BacktestRunResponseDto } from '../dtos/backtest-run-response.dto';
 import { BacktestRunSummaryResponseDto } from '../dtos/backtest-run-summary-response.dto';
 import { BacktestRunSeriesQueryDto } from '../dtos/backtest-run-series-query.dto';
@@ -52,6 +53,17 @@ export class BacktestingController {
     private readonly getBacktestRunEquityUseCase: GetBacktestRunEquityUseCase,
     private readonly listBacktestRunsUseCase: ListBacktestRunsUseCase,
   ) {}
+
+  @Get('health')
+  @ApiOperation({ summary: 'Backtesting module healthcheck' })
+  @ApiOkResponse({ type: BacktestingHealthResponseDto })
+  public getHealth(): BacktestingHealthResponseDto {
+    return {
+      status: 'ok',
+      service: 'backtesting',
+      timestamp: new Date().toISOString(),
+    };
+  }
 
   @Post('import')
   @ApiOperation({ summary: 'Trigger Binance futures kline data import job' })

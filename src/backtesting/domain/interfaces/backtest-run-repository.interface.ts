@@ -35,6 +35,35 @@ export type SaveBacktestRunInput = {
   }>;
 };
 
+export type StartBacktestRunInput = {
+  symbol: string;
+  interval: string;
+  strategyVersion: string;
+  config: Record<string, unknown>;
+  startTimeMs: bigint;
+  endTimeMs: bigint;
+};
+
+export type BacktestSignalPersistenceInput = {
+  timestampMs: bigint;
+  signalType: SignalType;
+  reason: string;
+  price: string;
+  metadata?: Record<string, unknown>;
+};
+
+export type BacktestEquityPointPersistenceInput = {
+  timestampMs: bigint;
+  equity: string;
+  drawdown: string;
+};
+
+export type FinalizeBacktestRunInput = {
+  runId: string;
+  metrics: SaveBacktestRunInput['metrics'];
+  trades: Trade[];
+};
+
 export type BacktestTradeView = {
   id: string;
   entryTime: string;
@@ -168,6 +197,16 @@ export type BacktestRunSummaryView = {
 };
 
 export interface IBacktestRunRepository {
+  startRun(input: StartBacktestRunInput): Promise<string>;
+  appendSignals(
+    runId: string,
+    signals: BacktestSignalPersistenceInput[],
+  ): Promise<void>;
+  appendEquityPoints(
+    runId: string,
+    points: BacktestEquityPointPersistenceInput[],
+  ): Promise<void>;
+  finalizeRun(input: FinalizeBacktestRunInput): Promise<void>;
   saveRun(input: SaveBacktestRunInput): Promise<string>;
   findById(runId: string): Promise<BacktestRunView | null>;
   findSummaryById(runId: string): Promise<BacktestRunSummaryView | null>;

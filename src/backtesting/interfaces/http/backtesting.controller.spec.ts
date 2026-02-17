@@ -44,6 +44,16 @@ function makeController(overrides?: Partial<UseCaseMocks>) {
 }
 
 describe('BacktestingController', () => {
+  it('getHealth returns module health payload', () => {
+    const { controller } = makeController();
+
+    const result = controller.getHealth();
+
+    expect(result).toHaveProperty('status', 'ok');
+    expect(result).toHaveProperty('service', 'backtesting');
+    expect(new Date(result.timestamp).toString()).not.toBe('Invalid Date');
+  });
+
   it('importBinanceData delegates to use-case and returns job response', async () => {
     const { controller, mocks } = makeController({
       importUseCaseMock: {
