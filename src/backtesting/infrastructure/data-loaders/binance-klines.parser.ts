@@ -25,7 +25,10 @@ export class BinanceKlinesParser {
     let lineNumber = 0;
     for await (const line of rl) {
       lineNumber++;
-
+      // skip title line
+      if (lineNumber === 1) {
+        continue;
+      }
       // Skip empty lines
       if (!line.trim()) {
         continue;
