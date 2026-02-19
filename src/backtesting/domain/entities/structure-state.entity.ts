@@ -72,6 +72,12 @@ export class StructureState {
     return this.bosTime;
   }
 
+  public clearBos(): void {
+    this.bosDetected = false;
+    this.bosTime = null;
+    this.bosType = null;
+  }
+
   /**
    * Update structure with new price
    * Returns true if BOS detected

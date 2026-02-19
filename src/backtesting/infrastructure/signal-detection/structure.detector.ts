@@ -20,6 +20,8 @@ export class StructureDetector implements IStructureDetector {
       return null;
     }
 
+    this.currentState.clearBos();
+
     const time = candle.getCloseTime();
     const bullishBos = this.currentState.checkBullishBos(
       candle.getHigh(),
