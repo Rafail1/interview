@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import Decimal from 'decimal.js';
 import { Candle } from 'src/backtesting/domain/entities/candle.entity';
+import { Price } from 'src/backtesting/domain/value-objects';
 import { Signal } from 'src/backtesting/domain/entities/signal.entity';
 import { Trade } from 'src/backtesting/domain/entities/trade.entity';
 import { ITradeSimulator } from 'src/backtesting/domain/interfaces/trade-simulator.interface';
@@ -35,6 +36,22 @@ export class TradeSimulator implements ITradeSimulator {
       .dividedBy(100);
     const quantity = riskAmount.dividedBy(entryPrice);
     const tradeSide = type === 'BUY' ? 'BUY' : 'SELL';
+    const stopDistance = entryPrice
+      .times(riskModel.getRiskPercent())
+      .dividedBy(100);
+    const takeDistance = stopDistance.times(riskModel.getRewardRatio());
+    const stopLoss =
+      tradeSide === 'BUY'
+        ? entryPrice.minus(stopDistance)
+        : entryPrice.plus(stopDistance);
+    const takeProfit =
+      tradeSide === 'BUY'
+        ? entryPrice.plus(takeDistance)
+        : entryPrice.minus(takeDistance);
+
+    if (stopLoss.lessThanOrEqualTo(0) || takeProfit.lessThanOrEqualTo(0)) {
+      return null;
+    }
 
     this.openTrade = Trade.create(
       `trade-${signal.getTime().toMsNumber()}`,
@@ -42,6 +59,8 @@ export class TradeSimulator implements ITradeSimulator {
       signal.getPrice(),
       quantity,
       tradeSide,
+      Price.from(stopLoss.toString()),
+      Price.from(takeProfit.toString()),
     );
 
     return this.openTrade;
@@ -52,8 +71,16 @@ export class TradeSimulator implements ITradeSimulator {
       return null;
     }
 
-    void reason;
-    this.openTrade.close(candle.getCloseTime(), candle.getClose());
+    if (reason === 'risk_check') {
+      const exitPrice = this.resolveRiskExitPrice(this.openTrade, candle);
+      if (!exitPrice) {
+        return null;
+      }
+      this.openTrade.close(candle.getCloseTime(), exitPrice);
+    } else {
+      this.openTrade.close(candle.getCloseTime(), candle.getClose());
+    }
+
     const pnl = this.openTrade.getPnL();
     if (pnl) {
       this.accountBalance = this.accountBalance.plus(pnl);
@@ -77,5 +104,39 @@ export class TradeSimulator implements ITradeSimulator {
     this.openTrade = null;
     this.closedTrades = [];
     this.accountBalance = this.startingBalance;
+  }
+
+  private resolveRiskExitPrice(trade: Trade, candle: Candle): Price | null {
+    const stopLoss = trade.getStopLossPrice();
+    const takeProfit = trade.getTakeProfitPrice();
+
+    if (!stopLoss || !takeProfit) {
+      return null;
+    }
+
+    const hitStop =
+      candle.getLow().isLessThanOrEqual(stopLoss) &&
+      candle.getHigh().isGreaterThanOrEqual(stopLoss);
+    const hitTake =
+      candle.getLow().isLessThanOrEqual(takeProfit) &&
+      candle.getHigh().isGreaterThanOrEqual(takeProfit);
+
+    if (trade.getSide() === 'BUY') {
+      if (hitStop) {
+        return stopLoss;
+      }
+      if (hitTake) {
+        return takeProfit;
+      }
+      return null;
+    }
+
+    if (hitStop) {
+      return stopLoss;
+    }
+    if (hitTake) {
+      return takeProfit;
+    }
+    return null;
   }
 }

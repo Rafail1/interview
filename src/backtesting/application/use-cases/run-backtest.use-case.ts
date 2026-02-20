@@ -183,6 +183,8 @@ export class RunBacktestUseCase {
             ? activeHigherTimeframeCandle
             : null;
 
+        this.tradeSimulator.closeOpenTrade(candle, 'risk_check');
+
         const signals = this.strategyEvaluator.evaluate(
           candle,
           higherCandleContext,

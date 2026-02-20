@@ -13,6 +13,8 @@ export class Trade {
   private status: TradeStatus = 'open';
   private pnl: Decimal | null = null;
   private pnlPercent: number = 0;
+  private readonly stopLossPrice: Price | null;
+  private readonly takeProfitPrice: Price | null;
 
   private constructor(
     private readonly id: string,
@@ -20,10 +22,14 @@ export class Trade {
     private readonly entryPrice: Price,
     private readonly quantity: Decimal,
     private readonly side: TradeSide,
+    stopLossPrice: Price | null = null,
+    takeProfitPrice: Price | null = null,
   ) {
     if (quantity.isNegative() || quantity.isZero()) {
       throw new Error('Trade quantity must be positive');
     }
+    this.stopLossPrice = stopLossPrice;
+    this.takeProfitPrice = takeProfitPrice;
   }
 
   /**
@@ -35,8 +41,18 @@ export class Trade {
     entryPrice: Price,
     quantity: number | string | Decimal,
     side: TradeSide,
+    stopLossPrice: Price | null = null,
+    takeProfitPrice: Price | null = null,
   ): Trade {
-    return new Trade(id, entryTime, entryPrice, new Decimal(quantity), side);
+    return new Trade(
+      id,
+      entryTime,
+      entryPrice,
+      new Decimal(quantity),
+      side,
+      stopLossPrice,
+      takeProfitPrice,
+    );
   }
 
   /**
@@ -80,6 +96,14 @@ export class Trade {
 
   public getPnLPercent(): number {
     return this.pnlPercent;
+  }
+
+  public getStopLossPrice(): Price | null {
+    return this.stopLossPrice;
+  }
+
+  public getTakeProfitPrice(): Price | null {
+    return this.takeProfitPrice;
   }
 
   /**
@@ -165,6 +189,8 @@ export class Trade {
       status: this.status,
       pnl: this.pnl?.toString() ?? null,
       pnlPercent: this.pnlPercent,
+      stopLossPrice: this.stopLossPrice?.toString() ?? null,
+      takeProfitPrice: this.takeProfitPrice?.toString() ?? null,
     };
   }
 }

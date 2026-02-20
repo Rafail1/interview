@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsDateString,
+  IsInt,
   IsNumber,
   IsOptional,
   IsString,
@@ -49,4 +50,14 @@ export class RunBacktestRequestDto {
   @Min(0.01)
   @ApiPropertyOptional({ example: 2, default: 2 })
   readonly rewardRatio?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @ApiPropertyOptional({
+    example: 1440,
+    description:
+      'Force-close any open trade after this many minutes if SL/TP did not trigger',
+  })
+  readonly maxHoldMinutes?: number;
 }
