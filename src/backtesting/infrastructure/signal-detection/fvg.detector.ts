@@ -12,6 +12,12 @@ export class FvgDetector implements IFvgDetector {
     this.history.push(candle);
     const detected: FVGZone[] = [];
 
+    for (const zone of this.zones.values()) {
+      if (!zone.isMitigated() && this.isMitigated(zone, candle)) {
+        zone.markMitigated(candle.getClose(), candle.getCloseTime());
+      }
+    }
+
     if (this.history.length >= 3) {
       const first = this.history[this.history.length - 3];
       const current = this.history[this.history.length - 1];
@@ -39,12 +45,6 @@ export class FvgDetector implements IFvgDetector {
         );
         this.zones.set(id, zone);
         detected.push(zone);
-      }
-    }
-
-    for (const zone of this.zones.values()) {
-      if (!zone.isMitigated() && this.isMitigated(zone, candle)) {
-        zone.markMitigated(candle.getClose(), candle.getCloseTime());
       }
     }
 
