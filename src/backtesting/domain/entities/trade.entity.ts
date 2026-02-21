@@ -13,7 +13,8 @@ export class Trade {
   private status: TradeStatus = 'open';
   private pnl: Decimal | null = null;
   private pnlPercent: number = 0;
-  private readonly stopLossPrice: Price | null;
+  private stopLossPrice: Price | null;
+  private readonly initialStopLossPrice: Price | null;
   private readonly takeProfitPrice: Price | null;
 
   private constructor(
@@ -29,6 +30,7 @@ export class Trade {
       throw new Error('Trade quantity must be positive');
     }
     this.stopLossPrice = stopLossPrice;
+    this.initialStopLossPrice = stopLossPrice;
     this.takeProfitPrice = takeProfitPrice;
   }
 
@@ -106,6 +108,10 @@ export class Trade {
     return this.takeProfitPrice;
   }
 
+  public getInitialStopLossPrice(): Price | null {
+    return this.initialStopLossPrice;
+  }
+
   /**
    * Is trade closed?
    */
@@ -143,6 +149,16 @@ export class Trade {
       throw new Error('Cannot cancel a closed trade');
     }
     this.status = 'cancelled';
+  }
+
+  public moveStopLossToEntry(): void {
+    if (this.status !== 'open') {
+      return;
+    }
+    if (!this.stopLossPrice) {
+      return;
+    }
+    this.stopLossPrice = this.entryPrice;
   }
 
   /**

@@ -89,6 +89,7 @@ export class TradeSimulator implements ITradeSimulator {
     if (reason === 'risk_check') {
       const exitPrice = this.resolveRiskExitPrice(this.openTrade, candle);
       if (!exitPrice) {
+        this.applyBreakEvenStopWhenOneToOneReached(this.openTrade, candle);
         return null;
       }
       this.openTrade.close(candle.getCloseTime(), exitPrice);
@@ -153,6 +154,52 @@ export class TradeSimulator implements ITradeSimulator {
       return takeProfit;
     }
     return null;
+  }
+
+  private applyBreakEvenStopWhenOneToOneReached(
+    trade: Trade,
+    candle: Candle,
+  ): void {
+    const currentStop = trade.getStopLossPrice();
+    const initialStop = trade.getInitialStopLossPrice();
+    const entry = trade.getEntryPrice();
+
+    if (!currentStop || !initialStop) {
+      return;
+    }
+
+    if (trade.getSide() === 'BUY') {
+      const riskDistance = entry.toDecimal().minus(initialStop.toDecimal());
+      if (riskDistance.lessThanOrEqualTo(0)) {
+        return;
+      }
+      const oneToOneTarget = entry.toDecimal().plus(riskDistance);
+      const reachedOneToOne = candle
+        .getHigh()
+        .toDecimal()
+        .greaterThanOrEqualTo(oneToOneTarget);
+      const stopBelowEntry = currentStop.toDecimal().lessThan(entry.toDecimal());
+
+      if (reachedOneToOne && stopBelowEntry) {
+        trade.moveStopLossToEntry();
+      }
+      return;
+    }
+
+    const riskDistance = initialStop.toDecimal().minus(entry.toDecimal());
+    if (riskDistance.lessThanOrEqualTo(0)) {
+      return;
+    }
+    const oneToOneTarget = entry.toDecimal().minus(riskDistance);
+    const reachedOneToOne = candle
+      .getLow()
+      .toDecimal()
+      .lessThanOrEqualTo(oneToOneTarget);
+    const stopAboveEntry = currentStop.toDecimal().greaterThan(entry.toDecimal());
+
+    if (reachedOneToOne && stopAboveEntry) {
+      trade.moveStopLossToEntry();
+    }
   }
 
   private resolveStopLossFromStructureOrRiskPercent(

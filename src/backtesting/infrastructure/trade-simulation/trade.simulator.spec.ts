@@ -128,4 +128,38 @@ describe('TradeSimulator', () => {
     expect(opened?.getStopLossPrice()?.toString()).toBe('98');
     expect(opened?.getTakeProfitPrice()?.toString()).toBe('104');
   });
+
+  it('moves stop-loss to entry after reaching 1:1 and exits at break-even on pullback', () => {
+    const simulator = new TradeSimulator();
+    const risk = RiskModel.from(2, 2);
+    const signal = Signal.createBuy(
+      'buy-6',
+      OHLCV.from('100', '100', '100', '100', '1', '1').getClose(),
+      Timestamp.fromMs(1_700_000_000_000),
+      'test',
+    );
+
+    simulator.processSignal(signal, risk);
+
+    const oneToOneReached = makeCandle(1_700_000_060_000, {
+      open: '100',
+      high: '102.5',
+      low: '99.5',
+      close: '101',
+    });
+    const firstCloseAttempt = simulator.closeOpenTrade(oneToOneReached, 'risk_check');
+    expect(firstCloseAttempt).toBeNull();
+    expect(simulator.getOpenTrade()?.getStopLossPrice()?.toString()).toBe('100');
+
+    const pullbackToEntry = makeCandle(1_700_000_120_000, {
+      open: '101',
+      high: '101.2',
+      low: '99.8',
+      close: '100.2',
+    });
+    const closed = simulator.closeOpenTrade(pullbackToEntry, 'risk_check');
+    expect(closed).not.toBeNull();
+    expect(closed?.getExitPrice()?.toString()).toBe('100');
+    expect(closed?.getPnL()?.toFixed(2)).toBe('0.00');
+  });
 });

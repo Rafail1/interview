@@ -207,10 +207,6 @@ export class RunBacktestUseCase {
             signalsBuffer.length = 0;
           }
 
-          const existing = this.tradeSimulator.getOpenTrade();
-          if (existing && signal.getType() !== 'INVALID') {
-            this.tradeSimulator.closeOpenTrade(candle, 'new_signal');
-          }
           this.tradeSimulator.processSignal(signal, riskModel);
         }
       }

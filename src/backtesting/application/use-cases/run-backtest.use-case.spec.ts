@@ -73,10 +73,7 @@ describe('RunBacktestUseCase', () => {
     };
     const tradeSimulatorMock = {
       reset: jest.fn(),
-      getOpenTrade: jest
-        .fn()
-        .mockReturnValueOnce(null)
-        .mockReturnValueOnce(trade),
+      getOpenTrade: jest.fn().mockReturnValue(trade),
       processSignal: jest.fn(),
       closeOpenTrade: jest.fn(),
       getClosedTrades: jest.fn().mockReturnValue([]),
@@ -123,6 +120,10 @@ describe('RunBacktestUseCase', () => {
       candle15m,
     );
     expect(tradeSimulatorMock.processSignal).toHaveBeenCalledTimes(1);
+    expect(tradeSimulatorMock.closeOpenTrade).not.toHaveBeenCalledWith(
+      candle1,
+      'new_signal',
+    );
     expect(tradeSimulatorMock.closeOpenTrade).toHaveBeenCalledWith(
       candle2,
       'end_of_backtest',
