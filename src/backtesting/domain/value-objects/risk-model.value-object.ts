@@ -18,7 +18,10 @@ export class RiskModel {
   /**
    * Factory: create with validation
    */
-  public static from(riskPercent: number, rewardRatio: number): RiskModel {
+  public static from(
+    riskPercent: number,
+    rewardRatio: number,
+  ): RiskModel {
     return new RiskModel(riskPercent, rewardRatio);
   }
 

@@ -34,11 +34,14 @@ export class TradeSimulator implements ITradeSimulator {
     const riskAmount = this.accountBalance
       .times(riskModel.getRiskPercent())
       .dividedBy(100);
-    const quantity = riskAmount.dividedBy(entryPrice);
-    const tradeSide = type === 'BUY' ? 'BUY' : 'SELL';
     const stopDistance = entryPrice
       .times(riskModel.getRiskPercent())
       .dividedBy(100);
+    if (stopDistance.lessThanOrEqualTo(0)) {
+      return null;
+    }
+    const quantity = riskAmount.dividedBy(stopDistance);
+    const tradeSide = type === 'BUY' ? 'BUY' : 'SELL';
     const takeDistance = stopDistance.times(riskModel.getRewardRatio());
     const stopLoss =
       tradeSide === 'BUY'

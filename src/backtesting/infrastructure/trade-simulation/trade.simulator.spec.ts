@@ -40,7 +40,7 @@ describe('TradeSimulator', () => {
 
     const closed = simulator.closeOpenTrade(exitCandle, 'risk_check');
     expect(closed).not.toBeNull();
-    expect(closed?.getPnL()?.toFixed(2)).toBe('8.00');
+    expect(closed?.getPnL()?.toFixed(2)).toBe('400.00');
   });
 
   it('uses conservative stop-first assumption when both SL and TP hit in same candle', () => {
@@ -63,6 +63,23 @@ describe('TradeSimulator', () => {
 
     const closed = simulator.closeOpenTrade(ambiguousCandle, 'risk_check');
     expect(closed).not.toBeNull();
-    expect(closed?.getPnL()?.toFixed(2)).toBe('-4.00');
+    expect(closed?.getPnL()?.toFixed(2)).toBe('-200.00');
+  });
+
+  it('sizes position dynamically from riskPercent', () => {
+    const simulator = new TradeSimulator();
+    const risk = RiskModel.from(2, 2);
+    const signal = Signal.createBuy(
+      'buy-3',
+      OHLCV.from('100', '100', '100', '100', '1', '1').getClose(),
+      Timestamp.fromMs(1_700_000_000_000),
+      'test',
+    );
+
+    const opened = simulator.processSignal(signal, risk);
+    expect(opened).not.toBeNull();
+    expect(opened?.getQuantity().toFixed(2)).toBe('100.00');
+    expect(opened?.getStopLossPrice()?.toString()).toBe('98');
+    expect(opened?.getTakeProfitPrice()?.toString()).toBe('104');
   });
 });
