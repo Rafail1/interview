@@ -1,4 +1,9 @@
-import { Inject, Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Candle } from 'src/backtesting/domain/entities/candle.entity';
 import { FVGZone } from 'src/backtesting/domain/entities/fvg-zone.entity';
@@ -17,7 +22,7 @@ import {
   UntrackSymbolResult,
 } from 'src/realtime-signals/domain/interfaces/realtime-symbol-tracker.interface';
 import {
-  IRealtimeMarketDataClient,
+  type IRealtimeMarketDataClient,
   REALTIME_MARKET_DATA_CLIENT_TOKEN,
 } from 'src/realtime-signals/domain/interfaces/realtime-market-data-client.interface';
 
@@ -175,8 +180,12 @@ export class RealtimeSymbolTrackerService
         ),
       ]);
 
-      const closed15m = candles15m.filter((c) => c.getCloseTime().toMsNumber() <= nowMs);
-      const closed1m = candles1m.filter((c) => c.getCloseTime().toMsNumber() <= nowMs);
+      const closed15m = candles15m.filter(
+        (c) => c.getCloseTime().toMsNumber() <= nowMs,
+      );
+      const closed1m = candles1m.filter(
+        (c) => c.getCloseTime().toMsNumber() <= nowMs,
+      );
 
       for (const candle15m of closed15m) {
         if (
@@ -250,7 +259,10 @@ export class RealtimeSymbolTrackerService
   private createState(symbol: string): SymbolTrackerState {
     const fvgDetector = new FvgDetector();
     const structureDetector = new StructureDetector();
-    const strategyEvaluator = new StrategyEvaluator(fvgDetector, structureDetector);
+    const strategyEvaluator = new StrategyEvaluator(
+      fvgDetector,
+      structureDetector,
+    );
     strategyEvaluator.configure({
       minFvgSizePercent: this.minFvgSizePercent,
       maxFvgSizePercent: this.maxFvgSizePercent,
@@ -270,7 +282,10 @@ export class RealtimeSymbolTrackerService
     };
   }
 
-  private emitZoneTouchSignals(state: SymbolTrackerState, candle1m: Candle): void {
+  private emitZoneTouchSignals(
+    state: SymbolTrackerState,
+    candle1m: Candle,
+  ): void {
     const activeZones = state.fvgDetector
       .getCurrentState()
       .filter((zone) => !zone.isMitigated());
@@ -286,7 +301,9 @@ export class RealtimeSymbolTrackerService
       }
       state.enteredZoneIds.add(zone.getId());
       this.logger.log(
-        JSON.stringify(this.buildZoneTouchPayload(state.symbol, candle1m, zone)),
+        JSON.stringify(
+          this.buildZoneTouchPayload(state.symbol, candle1m, zone),
+        ),
         RealtimeSymbolTrackerService.LOG_CONTEXT,
       );
     }
@@ -310,8 +327,7 @@ export class RealtimeSymbolTrackerService
         : null;
 
     if (reactedZoneId && !state.enteredZoneIds.has(reactedZoneId)) {
-      const zone = state
-        .fvgDetector
+      const zone = state.fvgDetector
         .getCurrentState()
         .find((item) => item.getId() === reactedZoneId);
       if (zone) {
@@ -347,16 +363,16 @@ export class RealtimeSymbolTrackerService
       category: 'realtime_signal',
       stage: 'fvg_zone_touch',
       symbol,
-      timestampMs: candle
-        ? candle.getCloseTime().toMsNumber()
-        : Date.now(),
+      timestampMs: candle ? candle.getCloseTime().toMsNumber() : Date.now(),
       candle: candle ? candle.toJSON() : null,
       zone: zone.toJSON(),
     };
   }
 
   private getActiveFvgCount(state: SymbolTrackerState): number {
-    return state.fvgDetector.getCurrentState().filter((zone) => !zone.isMitigated()).length;
+    return state.fvgDetector
+      .getCurrentState()
+      .filter((zone) => !zone.isMitigated()).length;
   }
 
   private normalizeSymbols(symbols: string[]): string[] {
@@ -375,4 +391,3 @@ export class RealtimeSymbolTrackerService
     return normalized;
   }
 }
-

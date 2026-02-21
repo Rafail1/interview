@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import {
-  IRealtimeSymbolTracker,
+  type IRealtimeSymbolTracker,
   REALTIME_SYMBOL_TRACKER_TOKEN,
 } from 'src/realtime-signals/domain/interfaces/realtime-symbol-tracker.interface';
 import { ListTrackedSymbolsResponseDto } from 'src/realtime-signals/interfaces/dtos/list-tracked-symbols-response.dto';
@@ -18,4 +18,3 @@ export class ListTrackedSymbolsUseCase {
     };
   }
 }
-

@@ -6,7 +6,7 @@ import {
   Timeframe,
   type TimeframeValue,
 } from 'src/backtesting/domain/value-objects/timeframe.value-object';
-import { IRealtimeMarketDataClient } from 'src/realtime-signals/domain/interfaces/realtime-market-data-client.interface';
+import { type IRealtimeMarketDataClient } from 'src/realtime-signals/domain/interfaces/realtime-market-data-client.interface';
 
 type BinanceKlineRow = [
   number,
@@ -68,4 +68,3 @@ export class BinanceRealtimeMarketDataClient implements IRealtimeMarketDataClien
       });
   }
 }
-
