@@ -7,6 +7,7 @@ import { NestLoggerService } from './core/infrastructure/nest-logger.service';
 import { RabbitMQConnectionService } from './core/infrastructure/rabbitmq-connection.service';
 import { CONNECTION_SERVICE_TOKEN } from './core/interfaces/connection.service.interface';
 import { PrismaService } from './core/infrastructure/prisma.service';
+import { RealtimeSignalsModule } from './realtime-signals/realtime-signals.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { PrismaService } from './core/infrastructure/prisma.service';
     }),
     TasksModule,
     BacktestingModule,
+    RealtimeSignalsModule,
   ],
   providers: [
     PrismaService,
