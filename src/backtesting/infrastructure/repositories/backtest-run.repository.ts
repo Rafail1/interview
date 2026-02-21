@@ -233,6 +233,13 @@ export class BacktestRunRepository implements IBacktestRunRepository {
             equityPoints: true,
           },
         },
+        signals: {
+          select: {
+            timestamp: true,
+            signalType: true,
+            metadata: true,
+          },
+        },
         trades: {
           orderBy: {
             entryTime: 'asc',

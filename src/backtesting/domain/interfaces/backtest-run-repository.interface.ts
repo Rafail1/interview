@@ -74,6 +74,7 @@ export type BacktestTradeView = {
   exitPrice: string | null;
   quantity: string;
   side: string;
+  entryZoneType: 'fvg' | 'orderBlock' | null;
   pnl: string;
   pnlPercent: number;
   riskAmountAtEntry: string | null;

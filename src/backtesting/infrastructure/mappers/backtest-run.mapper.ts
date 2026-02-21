@@ -92,6 +92,7 @@ export class BacktestRunMapper {
   public toDomainRun(
     run: BacktestRun & {
       trades: BacktestTrade[];
+      signals: Pick<SignalEvent, 'timestamp' | 'signalType' | 'metadata'>[];
       _count: { signals: number; equityPoints: number };
     },
   ): BacktestRunView {
@@ -126,7 +127,12 @@ export class BacktestRunMapper {
       equityPointsCount: run._count.equityPoints,
       createdAt: run.createdAt,
       updatedAt: run.updatedAt,
-      trades: this.toDomainTrades(run.trades, initialBalance, riskPercent),
+      trades: this.toDomainTrades(
+        run.trades,
+        run.signals,
+        initialBalance,
+        riskPercent,
+      ),
     };
   }
 
@@ -212,13 +218,42 @@ export class BacktestRunMapper {
 
   private toDomainTrades(
     trades: BacktestTrade[],
+    signals: Pick<SignalEvent, 'timestamp' | 'signalType' | 'metadata'>[],
     initialBalance: number | null,
     riskPercent: number | null,
   ): BacktestTradeView[] {
     let runningBalance = initialBalance;
+    const signalZoneTypeByKey = new Map<string, 'fvg' | 'orderBlock'>();
+    for (const signal of signals) {
+      const signalType = signal.signalType === 'BUY' || signal.signalType === 'SELL'
+        ? signal.signalType
+        : null;
+      if (!signalType) {
+        continue;
+      }
+      const zoneType = this.extractEntryZoneType(signal.metadata);
+      if (!zoneType) {
+        continue;
+      }
+      signalZoneTypeByKey.set(
+        `${signal.timestamp.toString()}-${signalType}`,
+        zoneType,
+      );
+    }
 
     return trades.map((trade) => {
-      const tradeView = this.toDomainTrade(trade, runningBalance, riskPercent);
+      const signalSide = trade.side === 'BUY' || trade.side === 'SELL' ? trade.side : null;
+      const zoneType =
+        signalSide === null
+          ? null
+          : signalZoneTypeByKey.get(`${trade.entryTime.toString()}-${signalSide}`) ??
+            null;
+      const tradeView = this.toDomainTrade(
+        trade,
+        zoneType,
+        runningBalance,
+        riskPercent,
+      );
       const pnl = this.toFiniteNumber(trade.pnl);
 
       if (runningBalance !== null && pnl !== null) {
@@ -233,6 +268,7 @@ export class BacktestRunMapper {
 
   private toDomainTrade(
     trade: BacktestTrade,
+    entryZoneType: 'fvg' | 'orderBlock' | null,
     entryBalance: number | null,
     riskPercent: number | null,
   ): BacktestTradeView {
@@ -258,6 +294,7 @@ export class BacktestRunMapper {
       exitPrice: trade.exitPrice,
       quantity: trade.quantity,
       side: trade.side,
+      entryZoneType,
       pnl: trade.pnl,
       pnlPercent: trade.pnlPercent,
       riskAmountAtEntry,
@@ -276,6 +313,20 @@ export class BacktestRunMapper {
       return Number.isFinite(parsed) ? parsed : null;
     }
     return null;
+  }
+
+  private extractEntryZoneType(
+    metadata: Prisma.JsonValue | null,
+  ): 'fvg' | 'orderBlock' | null {
+    if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) {
+      return null;
+    }
+    const entryZone = (metadata as Record<string, unknown>).entryZone;
+    if (!entryZone || typeof entryZone !== 'object' || Array.isArray(entryZone)) {
+      return null;
+    }
+    const type = (entryZone as Record<string, unknown>).type;
+    return type === 'fvg' || type === 'orderBlock' ? type : null;
   }
 
   private toPrismaJson(value: Record<string, unknown>): Prisma.InputJsonValue {
