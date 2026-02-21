@@ -25,6 +25,9 @@ class BacktestTradeResponseDto {
   @ApiProperty({ enum: ['fvg', 'orderBlock'], nullable: true })
   readonly entryZoneType: 'fvg' | 'orderBlock' | null;
 
+  @ApiProperty({ nullable: true })
+  readonly fvgSizePercentAtEntry: number | null;
+
   @ApiProperty()
   readonly pnl: string;
 
