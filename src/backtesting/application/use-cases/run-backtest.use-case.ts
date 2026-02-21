@@ -35,6 +35,8 @@ export class RunBacktestUseCase {
   private static readonly CANCEL_CHECK_EVERY = 500;
   private static readonly SIGNALS_BATCH_SIZE = 1_000;
   private static readonly EQUITY_BATCH_SIZE = 1_000;
+  private static readonly DEFAULT_MIN_FVG_SIZE_PERCENT = 0.8;
+  private static readonly DEFAULT_MAX_FVG_SIZE_PERCENT = 4;
   private readonly progressLogEvery: number;
 
   constructor(
@@ -72,6 +74,19 @@ export class RunBacktestUseCase {
 
     this.strategyEvaluator.reset();
     this.tradeSimulator.reset();
+    const minFvgSizePercent =
+      command.minFvgSizePercent ?? RunBacktestUseCase.DEFAULT_MIN_FVG_SIZE_PERCENT;
+    const maxFvgSizePercent =
+      command.maxFvgSizePercent ?? RunBacktestUseCase.DEFAULT_MAX_FVG_SIZE_PERCENT;
+
+    if (minFvgSizePercent > maxFvgSizePercent) {
+      throw new Error('minFvgSizePercent must be less than or equal to maxFvgSizePercent');
+    }
+
+    this.strategyEvaluator.configure?.({
+      minFvgSizePercent,
+      maxFvgSizePercent,
+    });
 
     const riskModel = RiskModel.from(
       command.riskPercent ?? 2,
@@ -129,6 +144,8 @@ export class RunBacktestUseCase {
         initialBalance,
         riskPercent: command.riskPercent ?? 2,
         rewardRatio: command.rewardRatio ?? 2,
+        minFvgSizePercent,
+        maxFvgSizePercent,
       },
       startTimeMs: start.toMs(),
       endTimeMs: end.toMs(),

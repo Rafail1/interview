@@ -5,6 +5,7 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  Max,
   Matches,
   Min,
 } from 'class-validator';
@@ -50,6 +51,28 @@ export class RunBacktestRequestDto {
   @Min(0.01)
   @ApiPropertyOptional({ example: 2, default: 2 })
   readonly rewardRatio?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(100)
+  @ApiPropertyOptional({
+    example: 0.8,
+    default: 0.8,
+    description: 'Skip FVG zones smaller than this percent of price',
+  })
+  readonly minFvgSizePercent?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(100)
+  @ApiPropertyOptional({
+    example: 4,
+    default: 4,
+    description: 'Skip FVG zones larger than this percent of price',
+  })
+  readonly maxFvgSizePercent?: number;
 
   @IsOptional()
   @IsInt()

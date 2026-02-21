@@ -49,8 +49,9 @@ export class Signal {
     price: Price,
     time: Timestamp,
     reason: string,
+    metadata?: Record<string, unknown>,
   ): Signal {
-    return new Signal(id, 'INVALID', price, time, reason);
+    return new Signal(id, 'INVALID', price, time, reason, metadata);
   }
 
   /**

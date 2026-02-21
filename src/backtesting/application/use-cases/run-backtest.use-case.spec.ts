@@ -61,6 +61,7 @@ describe('RunBacktestUseCase', () => {
     );
     const strategyEvaluatorMock = {
       reset: jest.fn(),
+      configure: jest.fn(),
       evaluate: jest
         .fn()
         .mockReturnValueOnce([buySignal])
@@ -110,6 +111,10 @@ describe('RunBacktestUseCase', () => {
     });
 
     expect(strategyEvaluatorMock.reset).toHaveBeenCalled();
+    expect(strategyEvaluatorMock.configure).toHaveBeenCalledWith({
+      minFvgSizePercent: 0.8,
+      maxFvgSizePercent: 4,
+    });
     expect(tradeSimulatorMock.reset).toHaveBeenCalled();
     expect(marketDataRepositoryMock.getCandleStream).toHaveBeenCalled();
     expect(marketDataRepositoryMock.getAggregatedStream).toHaveBeenCalled();
@@ -432,5 +437,53 @@ describe('RunBacktestUseCase', () => {
       'run-cancelled',
     );
     expect(backtestRunRepositoryMock.finalizeRun).not.toHaveBeenCalled();
+  });
+
+  it('throws when minFvgSizePercent is greater than maxFvgSizePercent', async () => {
+    const marketDataRepositoryMock = {
+      getCandleStream: jest.fn(),
+      getAggregatedStream: jest.fn(),
+    } as any;
+
+    const strategyEvaluatorMock = {
+      reset: jest.fn(),
+      configure: jest.fn(),
+      evaluate: jest.fn(),
+    } as any;
+
+    const tradeSimulatorMock = {
+      reset: jest.fn(),
+      getOpenTrade: jest.fn().mockReturnValue(null),
+      processSignal: jest.fn(),
+      closeOpenTrade: jest.fn(),
+      getClosedTrades: jest.fn().mockReturnValue([]),
+    } as any;
+
+    const backtestRunRepositoryMock = {
+      startRun: jest.fn(),
+    } as any;
+
+    const useCase = new RunBacktestUseCase(
+      configServiceMock as any,
+      marketDataRepositoryMock,
+      strategyEvaluatorMock,
+      tradeSimulatorMock,
+      backtestRunRepositoryMock,
+      loggerMock as any,
+    );
+
+    await expect(
+      useCase.execute({
+        symbol: 'BTCUSDT',
+        startDate: '2024-01-01T00:00:00.000Z',
+        endDate: '2024-01-01T00:10:00.000Z',
+        minFvgSizePercent: 5,
+        maxFvgSizePercent: 4,
+      }),
+    ).rejects.toThrow(
+      'minFvgSizePercent must be less than or equal to maxFvgSizePercent',
+    );
+
+    expect(backtestRunRepositoryMock.startRun).not.toHaveBeenCalled();
   });
 });

@@ -125,9 +125,114 @@ describe('StrategyEvaluator', () => {
       expect.objectContaining({
         fvg: expect.objectContaining({
           lowerBound: expect.any(String),
+          sizePercent: expect.any(Number),
           upperBound: expect.any(String),
         }),
       }),
     );
+  });
+
+  it('filters out bullish signal when reacted FVG is too large', () => {
+    const zone = FVGZone.createBullish(
+      'zone-large',
+      OHLCV.from('100', '105', '100', '104', '1', '1').getHigh(),
+      OHLCV.from('100', '105', '100', '104', '1', '1').getLow(),
+      Timestamp.fromMs(1_700_000_000_000),
+    );
+
+    const fvgDetectorMock = {
+      detect: jest.fn(),
+      getCurrentState: jest.fn().mockReturnValue([zone]),
+      reset: jest.fn(),
+    } as any;
+
+    const structureDetectorMock = {
+      detect: jest
+        .fn()
+        .mockReturnValueOnce(null)
+        .mockReturnValueOnce({
+          getBoSType: () => 'bullish',
+        }),
+      reset: jest.fn(),
+    } as any;
+
+    const evaluator = new StrategyEvaluator(fvgDetectorMock, structureDetectorMock);
+    const reactionCandle = makeCandle(1_700_000_000_000, '1m', {
+      open: '100',
+      high: '106',
+      low: '100',
+      close: '105',
+    });
+    const bosCandle = makeCandle(1_700_000_060_000, '1m', {
+      open: '105',
+      high: '107',
+      low: '104',
+      close: '105',
+    });
+    const higher = makeCandle(1_700_000_000_000, '15m', {
+      open: '99',
+      high: '110',
+      low: '98',
+      close: '108',
+    });
+
+    evaluator.evaluate(reactionCandle, higher);
+    const signals = evaluator.evaluate(bosCandle, higher);
+
+    expect(signals).toHaveLength(1);
+    expect(signals[0].getType()).toBe('INVALID');
+    expect(signals[0].getReason()).toBe('bullish_bos_fvg_size_filtered');
+  });
+
+  it('allows small FVG when configured min threshold is lower', () => {
+    const zone = FVGZone.createBullish(
+      'zone-small',
+      OHLCV.from('99.8', '100', '99.5', '99.9', '1', '1').getHigh(),
+      OHLCV.from('99.8', '100', '99.5', '99.9', '1', '1').getLow(),
+      Timestamp.fromMs(1_700_000_000_000),
+    );
+
+    const fvgDetectorMock = {
+      detect: jest.fn(),
+      getCurrentState: jest.fn().mockReturnValue([zone]),
+      reset: jest.fn(),
+    } as any;
+
+    const structureDetectorMock = {
+      detect: jest
+        .fn()
+        .mockReturnValueOnce(null)
+        .mockReturnValueOnce({
+          getBoSType: () => 'bullish',
+        }),
+      reset: jest.fn(),
+    } as any;
+
+    const evaluator = new StrategyEvaluator(fvgDetectorMock, structureDetectorMock);
+    evaluator.configure({ minFvgSizePercent: 0.3, maxFvgSizePercent: 4 });
+    const reactionCandle = makeCandle(1_700_000_000_000, '1m', {
+      open: '99.6',
+      high: '100.2',
+      low: '99.4',
+      close: '100',
+    });
+    const bosCandle = makeCandle(1_700_000_060_000, '1m', {
+      open: '100',
+      high: '101',
+      low: '99.8',
+      close: '100.1',
+    });
+    const higher = makeCandle(1_700_000_000_000, '15m', {
+      open: '99',
+      high: '102',
+      low: '98',
+      close: '101',
+    });
+
+    evaluator.evaluate(reactionCandle, higher);
+    const signals = evaluator.evaluate(bosCandle, higher);
+
+    expect(signals).toHaveLength(1);
+    expect(signals[0].getType()).toBe('BUY');
   });
 });
