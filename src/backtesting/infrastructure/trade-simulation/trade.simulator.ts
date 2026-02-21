@@ -7,9 +7,9 @@ import { Trade } from 'src/backtesting/domain/entities/trade.entity';
 import { ITradeSimulator } from 'src/backtesting/domain/interfaces/trade-simulator.interface';
 import { RiskModel } from 'src/backtesting/domain/value-objects/risk-model.value-object';
 
-type StructureMetadata = {
-  swingHigh?: unknown;
-  swingLow?: unknown;
+type FvgMetadata = {
+  upperBound?: unknown;
+  lowerBound?: unknown;
 };
 
 @Injectable()
@@ -40,7 +40,7 @@ export class TradeSimulator implements ITradeSimulator {
       .times(riskModel.getRiskPercent())
       .dividedBy(100);
     const tradeSide = type === 'BUY' ? 'BUY' : 'SELL';
-    const stopLoss = this.resolveStopLossFromStructureOrRiskPercent(
+    const stopLoss = this.resolveStopLossFromFvgOrRiskPercent(
       signal,
       tradeSide,
       entryPrice,
@@ -202,21 +202,21 @@ export class TradeSimulator implements ITradeSimulator {
     }
   }
 
-  private resolveStopLossFromStructureOrRiskPercent(
+  private resolveStopLossFromFvgOrRiskPercent(
     signal: Signal,
     side: 'BUY' | 'SELL',
     entryPrice: Decimal,
     riskModel: RiskModel,
   ): Price | null {
-    const structureStop = this.getStructureStopPrice(signal, side);
-    if (structureStop) {
-      const structureStopDecimal = structureStop.toDecimal();
+    const fvgStop = this.getFvgStopPrice(signal, side);
+    if (fvgStop) {
+      const structureStopDecimal = fvgStop.toDecimal();
       const validForSide =
         side === 'BUY'
           ? structureStopDecimal.lessThan(entryPrice)
           : structureStopDecimal.greaterThan(entryPrice);
       if (validForSide && structureStopDecimal.greaterThan(0)) {
-        return structureStop;
+        return fvgStop;
       }
     }
 
@@ -237,7 +237,7 @@ export class TradeSimulator implements ITradeSimulator {
     return Price.from(fallbackStop.toString());
   }
 
-  private getStructureStopPrice(
+  private getFvgStopPrice(
     signal: Signal,
     side: 'BUY' | 'SELL',
   ): Price | null {
@@ -246,13 +246,14 @@ export class TradeSimulator implements ITradeSimulator {
       return null;
     }
 
-    const structure = (metadata as Record<string, unknown>)
-      .structure as StructureMetadata | undefined;
-    if (!structure || typeof structure !== 'object') {
+    const fvg = (metadata as Record<string, unknown>).fvg as
+      | FvgMetadata
+      | undefined;
+    if (!fvg || typeof fvg !== 'object') {
       return null;
     }
 
-    const rawValue = side === 'BUY' ? structure.swingLow : structure.swingHigh;
+    const rawValue = side === 'BUY' ? fvg.lowerBound : fvg.upperBound;
     if (typeof rawValue !== 'string' && typeof rawValue !== 'number') {
       return null;
     }

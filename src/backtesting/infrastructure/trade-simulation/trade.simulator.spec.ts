@@ -83,7 +83,7 @@ describe('TradeSimulator', () => {
     expect(opened?.getTakeProfitPrice()?.toString()).toBe('104');
   });
 
-  it('uses structure swingLow as BUY stop-loss when present in signal metadata', () => {
+  it('uses FVG lowerBound as BUY stop-loss when present in signal metadata', () => {
     const simulator = new TradeSimulator();
     const risk = RiskModel.from(2, 2);
     const signal = Signal.createBuy(
@@ -92,9 +92,9 @@ describe('TradeSimulator', () => {
       Timestamp.fromMs(1_700_000_000_000),
       'test',
       {
-        structure: {
-          swingLow: '95',
-          swingHigh: '105',
+        fvg: {
+          lowerBound: '95',
+          upperBound: '105',
         },
       },
     );
@@ -106,7 +106,7 @@ describe('TradeSimulator', () => {
     expect(opened?.getTakeProfitPrice()?.toString()).toBe('110');
   });
 
-  it('falls back to riskPercent stop-loss if structure stop is invalid for side', () => {
+  it('falls back to riskPercent stop-loss if FVG stop is invalid for side', () => {
     const simulator = new TradeSimulator();
     const risk = RiskModel.from(2, 2);
     const signal = Signal.createBuy(
@@ -115,9 +115,9 @@ describe('TradeSimulator', () => {
       Timestamp.fromMs(1_700_000_000_000),
       'test',
       {
-        structure: {
-          swingLow: '101',
-          swingHigh: '110',
+        fvg: {
+          lowerBound: '101',
+          upperBound: '110',
         },
       },
     );

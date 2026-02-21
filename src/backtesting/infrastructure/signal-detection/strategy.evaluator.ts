@@ -55,8 +55,9 @@ export class StrategyEvaluator implements IStrategyEvaluator {
     const timeMs = time.toMs();
 
     if (bosType === 'bullish') {
-      const matchedZone = this.getMatchedReaction('bullish', timeMs);
-      if (matchedZone) {
+      const matchedZoneId = this.getMatchedReaction('bullish', timeMs);
+      if (matchedZoneId) {
+        const matchedZone = this.getZoneById(matchedZoneId);
         this.consumeReactions('bullish', timeMs);
         return [
           Signal.createBuy(
@@ -66,12 +67,12 @@ export class StrategyEvaluator implements IStrategyEvaluator {
             'bullish_bos_fvg_reaction_confluence',
             {
               candle15m: candle15m?.toJSON() ?? null,
-              reactedZoneId: matchedZone,
-              structure: {
-                swingHigh: structure.getSwingHigh().toString(),
-                swingLow: structure.getSwingLow().toString(),
-                bosType: structure.getBoSType(),
-                bosTimeMs: structure.getBoSTime()?.toMs().toString() ?? null,
+              reactedZoneId: matchedZoneId,
+              fvg: {
+                id: matchedZoneId,
+                direction: 'bullish',
+                upperBound: matchedZone?.getUpperBound().toString() ?? null,
+                lowerBound: matchedZone?.getLowerBound().toString() ?? null,
               },
             },
           ),
@@ -87,8 +88,9 @@ export class StrategyEvaluator implements IStrategyEvaluator {
       ];
     }
 
-    const matchedZone = this.getMatchedReaction('bearish', timeMs);
-    if (matchedZone) {
+    const matchedZoneId = this.getMatchedReaction('bearish', timeMs);
+    if (matchedZoneId) {
+      const matchedZone = this.getZoneById(matchedZoneId);
       this.consumeReactions('bearish', timeMs);
       return [
         Signal.createSell(
@@ -98,12 +100,12 @@ export class StrategyEvaluator implements IStrategyEvaluator {
           'bearish_bos_fvg_reaction_confluence',
           {
             candle15m: candle15m?.toJSON() ?? null,
-            reactedZoneId: matchedZone,
-            structure: {
-              swingHigh: structure.getSwingHigh().toString(),
-              swingLow: structure.getSwingLow().toString(),
-              bosType: structure.getBoSType(),
-              bosTimeMs: structure.getBoSTime()?.toMs().toString() ?? null,
+            reactedZoneId: matchedZoneId,
+            fvg: {
+              id: matchedZoneId,
+              direction: 'bearish',
+              upperBound: matchedZone?.getUpperBound().toString() ?? null,
+              lowerBound: matchedZone?.getLowerBound().toString() ?? null,
             },
           },
         ),
@@ -204,5 +206,12 @@ export class StrategyEvaluator implements IStrategyEvaluator {
         this.reactedZones.delete(zoneId);
       }
     }
+  }
+
+  private getZoneById(zoneId: string): FVGZone | null {
+    const activeZones = this.fvgDetector
+      .getCurrentState()
+      .filter((zone) => !zone.isMitigated());
+    return activeZones.find((zone) => zone.getId() === zoneId) ?? null;
   }
 }
