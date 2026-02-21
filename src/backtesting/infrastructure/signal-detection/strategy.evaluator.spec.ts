@@ -87,6 +87,11 @@ describe('StrategyEvaluator', () => {
         .mockReturnValueOnce(null)
         .mockReturnValueOnce({
           getBoSType: () => 'bullish',
+          getSwingHigh: () =>
+            OHLCV.from('101', '106', '100', '105', '1', '1').getHigh(),
+          getSwingLow: () =>
+            OHLCV.from('101', '106', '100', '105', '1', '1').getLow(),
+          getBoSTime: () => Timestamp.fromMs(1_700_000_060_000),
         }),
       reset: jest.fn(),
     } as any;
