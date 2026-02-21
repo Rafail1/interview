@@ -245,20 +245,26 @@ export class StrategyEvaluator implements IStrategyEvaluator {
     }
 
     const isBullishFvg = fvg.isBullish();
-    const anchorCandle = this.higherTimeframeHistory[anchorIndex];
-    const matchesColor = isBullishFvg
-      ? anchorCandle.isBearish()
-      : anchorCandle.isBullish();
-    if (!matchesColor) {
+    const isDesiredColor = (candle: Candle): boolean =>
+      isBullishFvg ? candle.isBearish() : candle.isBullish();
+
+    // Find the last opposite-color candle before the impulse that created FVG.
+    let blockEnd = anchorIndex;
+    while (
+      blockEnd >= 0 &&
+      !isDesiredColor(this.higherTimeframeHistory[blockEnd])
+    ) {
+      blockEnd -= 1;
+    }
+    if (blockEnd < 0) {
       return;
     }
 
-    let blockStart = anchorIndex;
+    // Expand backwards to include consecutive same-colored candles as one OB block.
+    let blockStart = blockEnd;
     while (blockStart > 0) {
       const previous = this.higherTimeframeHistory[blockStart - 1];
-      const previousMatches = isBullishFvg
-        ? previous.isBearish()
-        : previous.isBullish();
+      const previousMatches = isDesiredColor(previous);
       if (!previousMatches) {
         break;
       }
@@ -267,7 +273,7 @@ export class StrategyEvaluator implements IStrategyEvaluator {
 
     const blockCandles = this.higherTimeframeHistory.slice(
       blockStart,
-      anchorIndex + 1,
+      blockEnd + 1,
     );
     if (blockCandles.length === 0) {
       return;
