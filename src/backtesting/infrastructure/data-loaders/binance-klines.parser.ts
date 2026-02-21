@@ -25,10 +25,6 @@ export class BinanceKlinesParser {
     let lineNumber = 0;
     for await (const line of rl) {
       lineNumber++;
-      // skip title line
-      if (lineNumber === 1) {
-        continue;
-      }
       // Skip empty lines
       if (!line.trim()) {
         continue;
@@ -36,6 +32,9 @@ export class BinanceKlinesParser {
 
       try {
         const row = line.split(',').map((col) => col.trim());
+        if (lineNumber === 1 && this.isHeaderRow(row)) {
+          continue;
+        }
         const candle = Candle.fromBinanceRow(symbol, interval, row);
         yield candle;
       } catch (error) {
@@ -44,6 +43,26 @@ export class BinanceKlinesParser {
         );
       }
     }
+  }
+
+  private static isHeaderRow(row: string[]): boolean {
+    if (row.length < 6) {
+      return false;
+    }
+
+    const normalized = row.map((column) => column.toLowerCase());
+    const firstColumn = normalized[0]?.replace(/[\s_-]/g, '');
+    if (firstColumn === 'opentime') {
+      return true;
+    }
+
+    const hasOpenColumn = normalized.some(
+      (column) => column === 'open' || column === 'open price',
+    );
+    const hasCloseColumn = normalized.some(
+      (column) => column === 'close' || column === 'close price',
+    );
+    return hasOpenColumn && hasCloseColumn;
   }
 
   /**
