@@ -28,6 +28,12 @@ class BacktestTradeResponseDto {
   @ApiProperty()
   readonly pnlPercent: number;
 
+  @ApiProperty({ nullable: true })
+  readonly riskAmountAtEntry: string | null;
+
+  @ApiProperty({ nullable: true })
+  readonly equityImpactPercent: number | null;
+
   @ApiProperty()
   readonly status: string;
 

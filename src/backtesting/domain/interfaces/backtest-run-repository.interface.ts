@@ -76,6 +76,8 @@ export type BacktestTradeView = {
   side: string;
   pnl: string;
   pnlPercent: number;
+  riskAmountAtEntry: string | null;
+  equityImpactPercent: number | null;
   status: string;
   createdAt: Date;
 };

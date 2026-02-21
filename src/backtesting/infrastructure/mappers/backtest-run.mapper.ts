@@ -95,6 +95,10 @@ export class BacktestRunMapper {
       _count: { signals: number; equityPoints: number };
     },
   ): BacktestRunView {
+    const config = run.config as Record<string, unknown>;
+    const initialBalance = this.toFiniteNumber(config.initialBalance);
+    const riskPercent = this.toFiniteNumber(config.riskPercent);
+
     return {
       id: run.id,
       symbol: run.symbol,
@@ -105,7 +109,7 @@ export class BacktestRunMapper {
       processedCandles: run.processedCandles,
       generatedSignals: run.generatedSignals,
       cancelRequestedAt: run.cancelRequestedAt,
-      config: run.config as Record<string, unknown>,
+      config,
       startTime: run.startTime.toString(),
       endTime: run.endTime.toString(),
       totalTrades: run.totalTrades,
@@ -122,7 +126,7 @@ export class BacktestRunMapper {
       equityPointsCount: run._count.equityPoints,
       createdAt: run.createdAt,
       updatedAt: run.updatedAt,
-      trades: run.trades.map((trade) => this.toDomainTrade(trade)),
+      trades: this.toDomainTrades(run.trades, initialBalance, riskPercent),
     };
   }
 
@@ -206,7 +210,46 @@ export class BacktestRunMapper {
     };
   }
 
-  private toDomainTrade(trade: BacktestTrade): BacktestTradeView {
+  private toDomainTrades(
+    trades: BacktestTrade[],
+    initialBalance: number | null,
+    riskPercent: number | null,
+  ): BacktestTradeView[] {
+    let runningBalance = initialBalance;
+
+    return trades.map((trade) => {
+      const tradeView = this.toDomainTrade(trade, runningBalance, riskPercent);
+      const pnl = this.toFiniteNumber(trade.pnl);
+
+      if (runningBalance !== null && pnl !== null) {
+        runningBalance += pnl;
+      } else {
+        runningBalance = null;
+      }
+
+      return tradeView;
+    });
+  }
+
+  private toDomainTrade(
+    trade: BacktestTrade,
+    entryBalance: number | null,
+    riskPercent: number | null,
+  ): BacktestTradeView {
+    const pnl = this.toFiniteNumber(trade.pnl);
+    const canCompute =
+      entryBalance !== null &&
+      entryBalance > 0 &&
+      riskPercent !== null &&
+      riskPercent > 0 &&
+      pnl !== null;
+    const riskAmountAtEntry = canCompute
+      ? ((entryBalance * riskPercent) / 100).toFixed(8)
+      : null;
+    const equityImpactPercent = canCompute
+      ? (pnl / entryBalance) * 100
+      : null;
+
     return {
       id: trade.id,
       entryTime: trade.entryTime.toString(),
@@ -217,9 +260,22 @@ export class BacktestRunMapper {
       side: trade.side,
       pnl: trade.pnl,
       pnlPercent: trade.pnlPercent,
+      riskAmountAtEntry,
+      equityImpactPercent,
       status: trade.status,
       createdAt: trade.createdAt,
     };
+  }
+
+  private toFiniteNumber(value: unknown): number | null {
+    if (typeof value === 'number') {
+      return Number.isFinite(value) ? value : null;
+    }
+    if (typeof value === 'string') {
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : null;
+    }
+    return null;
   }
 
   private toPrismaJson(value: Record<string, unknown>): Prisma.InputJsonValue {
