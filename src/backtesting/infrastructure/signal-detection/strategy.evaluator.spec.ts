@@ -67,7 +67,7 @@ describe('StrategyEvaluator', () => {
     expect(fvgDetectorMock.detect).toHaveBeenCalledWith(higher);
   });
 
-  it('emits BUY only when BOS occurs after bullish reaction to active HTF FVG', () => {
+  it('emits BUY only when BOS occurs after bullish reaction to active HTF zone', () => {
     const zone = FVGZone.createBullish(
       'zone-react',
       OHLCV.from('101', '102', '100', '101', '1', '1').getHigh(),
@@ -105,10 +105,10 @@ describe('StrategyEvaluator', () => {
       close: '105',
     });
     const higher = makeCandle(1_700_000_000_000, '15m', {
-      open: '100',
+      open: '108',
       high: '110',
       low: '99',
-      close: '108',
+      close: '100',
     });
 
     const first = evaluator.evaluate(reactionCandle, higher);
@@ -123,7 +123,8 @@ describe('StrategyEvaluator', () => {
     );
     expect(second[0].getMetadata()).toEqual(
       expect.objectContaining({
-        fvg: expect.objectContaining({
+        entryZone: expect.objectContaining({
+          type: expect.any(String),
           lowerBound: expect.any(String),
           upperBound: expect.any(String),
         }),

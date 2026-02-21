@@ -83,7 +83,7 @@ describe('TradeSimulator', () => {
     expect(opened?.getTakeProfitPrice()?.toString()).toBe('104');
   });
 
-  it('uses FVG lowerBound as BUY stop-loss when present in signal metadata', () => {
+  it('uses entryZone lowerBound as BUY stop-loss when present in signal metadata', () => {
     const simulator = new TradeSimulator();
     const risk = RiskModel.from(2, 2);
     const signal = Signal.createBuy(
@@ -92,7 +92,8 @@ describe('TradeSimulator', () => {
       Timestamp.fromMs(1_700_000_000_000),
       'test',
       {
-        fvg: {
+        entryZone: {
+          type: 'orderBlock',
           lowerBound: '95',
           upperBound: '105',
         },
@@ -106,7 +107,7 @@ describe('TradeSimulator', () => {
     expect(opened?.getTakeProfitPrice()?.toString()).toBe('110');
   });
 
-  it('falls back to riskPercent stop-loss if FVG stop is invalid for side', () => {
+  it('falls back to riskPercent stop-loss if entryZone stop is invalid for side', () => {
     const simulator = new TradeSimulator();
     const risk = RiskModel.from(2, 2);
     const signal = Signal.createBuy(
@@ -115,7 +116,8 @@ describe('TradeSimulator', () => {
       Timestamp.fromMs(1_700_000_000_000),
       'test',
       {
-        fvg: {
+        entryZone: {
+          type: 'orderBlock',
           lowerBound: '101',
           upperBound: '110',
         },

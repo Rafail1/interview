@@ -11,13 +11,31 @@ import {
   STRUCTURE_DETECTOR_TOKEN,
 } from 'src/backtesting/domain/interfaces/structure-detector.interface';
 import { IStrategyEvaluator } from 'src/backtesting/domain/interfaces/strategy-evaluator.interface';
+import { Price } from 'src/backtesting/domain/value-objects';
+
+type Direction = 'bullish' | 'bearish';
+type ZoneType = 'fvg' | 'orderBlock';
+type EntryZone = {
+  type: ZoneType;
+  direction: Direction;
+  upperBound: Price;
+  lowerBound: Price;
+  fvgSizePercent: number;
+};
+type OrderBlockRange = {
+  upperBound: Price;
+  lowerBound: Price;
+};
 
 @Injectable()
 export class StrategyEvaluator implements IStrategyEvaluator {
-  private readonly reactedZones = new Map<
+  private static readonly LARGE_FVG_THRESHOLD_PERCENT = 4;
+  private readonly reactedOrderBlocks = new Map<
     string,
-    { direction: 'bullish' | 'bearish'; reactedAtMs: bigint }
+    { direction: Direction; reactedAtMs: bigint }
   >();
+  private readonly higherTimeframeHistory: Candle[] = [];
+  private readonly fvgOrderBlocks = new Map<string, OrderBlockRange>();
   private lastProcessedHigherCloseMs: bigint | null = null;
 
   constructor(
@@ -30,12 +48,16 @@ export class StrategyEvaluator implements IStrategyEvaluator {
     if (candle15m) {
       const higherCloseMs = candle15m.getCloseTime().toMs();
       if (this.lastProcessedHigherCloseMs !== higherCloseMs) {
-        this.fvgDetector.detect(candle15m);
+        this.higherTimeframeHistory.push(candle15m);
+        const detectedFvgs = this.fvgDetector.detect(candle15m) ?? [];
+        for (const fvg of detectedFvgs) {
+          this.captureOrderBlockForFvg(fvg);
+        }
         this.lastProcessedHigherCloseMs = higherCloseMs;
       }
     }
 
-    this.trackReactions(candle1m);
+    this.trackOrderBlockReactions(candle1m);
     this.removeStaleReactions();
 
     const structure = this.structureDetector.detect(candle1m);
@@ -57,7 +79,8 @@ export class StrategyEvaluator implements IStrategyEvaluator {
     if (bosType === 'bullish') {
       const matchedZoneId = this.getMatchedReaction('bullish', timeMs);
       if (matchedZoneId) {
-        const matchedZone = this.getZoneById(matchedZoneId);
+        const matchedFvg = this.getActiveFvgById(matchedZoneId);
+        const entryZone = matchedFvg ? this.resolveEntryZone(matchedFvg) : null;
         this.consumeReactions('bullish', timeMs);
         return [
           Signal.createBuy(
@@ -68,12 +91,15 @@ export class StrategyEvaluator implements IStrategyEvaluator {
             {
               candle15m: candle15m?.toJSON() ?? null,
               reactedZoneId: matchedZoneId,
-              fvg: {
-                id: matchedZoneId,
-                direction: 'bullish',
-                upperBound: matchedZone?.getUpperBound().toString() ?? null,
-                lowerBound: matchedZone?.getLowerBound().toString() ?? null,
-              },
+              entryZone: entryZone
+                ? {
+                    type: entryZone.type,
+                    direction: entryZone.direction,
+                    upperBound: entryZone.upperBound.toString(),
+                    lowerBound: entryZone.lowerBound.toString(),
+                    fvgSizePercent: entryZone.fvgSizePercent,
+                  }
+                : null,
             },
           ),
         ];
@@ -90,7 +116,8 @@ export class StrategyEvaluator implements IStrategyEvaluator {
 
     const matchedZoneId = this.getMatchedReaction('bearish', timeMs);
     if (matchedZoneId) {
-      const matchedZone = this.getZoneById(matchedZoneId);
+      const matchedFvg = this.getActiveFvgById(matchedZoneId);
+      const entryZone = matchedFvg ? this.resolveEntryZone(matchedFvg) : null;
       this.consumeReactions('bearish', timeMs);
       return [
         Signal.createSell(
@@ -101,12 +128,15 @@ export class StrategyEvaluator implements IStrategyEvaluator {
           {
             candle15m: candle15m?.toJSON() ?? null,
             reactedZoneId: matchedZoneId,
-            fvg: {
-              id: matchedZoneId,
-              direction: 'bearish',
-              upperBound: matchedZone?.getUpperBound().toString() ?? null,
-              lowerBound: matchedZone?.getLowerBound().toString() ?? null,
-            },
+            entryZone: entryZone
+              ? {
+                  type: entryZone.type,
+                  direction: entryZone.direction,
+                  upperBound: entryZone.upperBound.toString(),
+                  lowerBound: entryZone.lowerBound.toString(),
+                  fvgSizePercent: entryZone.fvgSizePercent,
+                }
+              : null,
           },
         ),
       ];
@@ -122,26 +152,32 @@ export class StrategyEvaluator implements IStrategyEvaluator {
   }
 
   public reset(): void {
-    this.reactedZones.clear();
+    this.reactedOrderBlocks.clear();
+    this.higherTimeframeHistory.length = 0;
+    this.fvgOrderBlocks.clear();
     this.lastProcessedHigherCloseMs = null;
     this.fvgDetector.reset();
     this.structureDetector.reset();
   }
 
-  private trackReactions(candle1m: Candle): void {
-    const activeFvgs = this.fvgDetector
-      .getCurrentState()
-      .filter((zone) => !zone.isMitigated());
-
-    for (const zone of activeFvgs) {
-      if (zone.isBullish() && this.isBullishReaction(zone, candle1m)) {
-        this.reactedZones.set(zone.getId(), {
+  private trackOrderBlockReactions(candle1m: Candle): void {
+    const activeFvgs = this.getActiveFvgs();
+    for (const fvg of activeFvgs) {
+      const entryZone = this.resolveEntryZone(fvg);
+      if (
+        entryZone.direction === 'bullish' &&
+        this.isBullishReaction(entryZone, candle1m)
+      ) {
+        this.reactedOrderBlocks.set(fvg.getId(), {
           direction: 'bullish',
           reactedAtMs: candle1m.getCloseTime().toMs(),
         });
       }
-      if (zone.isBearish() && this.isBearishReaction(zone, candle1m)) {
-        this.reactedZones.set(zone.getId(), {
+      if (
+        entryZone.direction === 'bearish' &&
+        this.isBearishReaction(entryZone, candle1m)
+      ) {
+        this.reactedOrderBlocks.set(fvg.getId(), {
           direction: 'bearish',
           reactedAtMs: candle1m.getCloseTime().toMs(),
         });
@@ -150,46 +186,40 @@ export class StrategyEvaluator implements IStrategyEvaluator {
   }
 
   private removeStaleReactions(): void {
-    const activeIds = new Set(
-      this.fvgDetector
-        .getCurrentState()
-        .filter((zone) => !zone.isMitigated())
-        .map((zone) => zone.getId()),
-    );
+    const activeIds = new Set(this.getActiveFvgs().map((fvg) => fvg.getId()));
 
-    for (const zoneId of this.reactedZones.keys()) {
-      if (!activeIds.has(zoneId)) {
-        this.reactedZones.delete(zoneId);
+    for (const blockId of this.reactedOrderBlocks.keys()) {
+      if (!activeIds.has(blockId)) {
+        this.reactedOrderBlocks.delete(blockId);
       }
     }
   }
 
-  private isBullishReaction(zone: FVGZone, candle: Candle): boolean {
+  private isBullishReaction(zone: EntryZone, candle: Candle): boolean {
     const touchesZone =
-      candle.getLow().isLessThanOrEqual(zone.getUpperBound()) &&
-      candle.getHigh().isGreaterThanOrEqual(zone.getLowerBound());
-
-    return (
-      touchesZone &&
-      candle.getClose().isGreaterThanOrEqual(zone.getUpperBound())
-    );
+      candle.getLow().isLessThanOrEqual(zone.upperBound) &&
+      candle.getHigh().isGreaterThanOrEqual(zone.lowerBound);
+    if (zone.type === 'fvg') {
+      return touchesZone && candle.getClose().isGreaterThanOrEqual(zone.upperBound);
+    }
+    return touchesZone && candle.getClose().isGreaterThan(candle.getOpen());
   }
 
-  private isBearishReaction(zone: FVGZone, candle: Candle): boolean {
+  private isBearishReaction(zone: EntryZone, candle: Candle): boolean {
     const touchesZone =
-      candle.getLow().isLessThanOrEqual(zone.getUpperBound()) &&
-      candle.getHigh().isGreaterThanOrEqual(zone.getLowerBound());
-
-    return (
-      touchesZone && candle.getClose().isLessThanOrEqual(zone.getLowerBound())
-    );
+      candle.getLow().isLessThanOrEqual(zone.upperBound) &&
+      candle.getHigh().isGreaterThanOrEqual(zone.lowerBound);
+    if (zone.type === 'fvg') {
+      return touchesZone && candle.getClose().isLessThanOrEqual(zone.lowerBound);
+    }
+    return touchesZone && candle.getClose().isLessThan(candle.getOpen());
   }
 
   private getMatchedReaction(
-    direction: 'bullish' | 'bearish',
+    direction: Direction,
     bosTimeMs: bigint,
   ): string | null {
-    for (const [zoneId, state] of this.reactedZones.entries()) {
+    for (const [zoneId, state] of this.reactedOrderBlocks.entries()) {
       if (state.direction === direction && state.reactedAtMs <= bosTimeMs) {
         return zoneId;
       }
@@ -198,20 +228,100 @@ export class StrategyEvaluator implements IStrategyEvaluator {
   }
 
   private consumeReactions(
-    direction: 'bullish' | 'bearish',
+    direction: Direction,
     bosTimeMs: bigint,
   ): void {
-    for (const [zoneId, state] of this.reactedZones.entries()) {
+    for (const [zoneId, state] of this.reactedOrderBlocks.entries()) {
       if (state.direction === direction && state.reactedAtMs <= bosTimeMs) {
-        this.reactedZones.delete(zoneId);
+        this.reactedOrderBlocks.delete(zoneId);
       }
     }
   }
 
-  private getZoneById(zoneId: string): FVGZone | null {
-    const activeZones = this.fvgDetector
+  private captureOrderBlockForFvg(fvg: FVGZone): void {
+    const anchorIndex = this.higherTimeframeHistory.length - 3;
+    if (anchorIndex < 0) {
+      return;
+    }
+
+    const isBullishFvg = fvg.isBullish();
+    const anchorCandle = this.higherTimeframeHistory[anchorIndex];
+    const matchesColor = isBullishFvg
+      ? anchorCandle.isBearish()
+      : anchorCandle.isBullish();
+    if (!matchesColor) {
+      return;
+    }
+
+    let blockStart = anchorIndex;
+    while (blockStart > 0) {
+      const previous = this.higherTimeframeHistory[blockStart - 1];
+      const previousMatches = isBullishFvg
+        ? previous.isBearish()
+        : previous.isBullish();
+      if (!previousMatches) {
+        break;
+      }
+      blockStart -= 1;
+    }
+
+    const blockCandles = this.higherTimeframeHistory.slice(
+      blockStart,
+      anchorIndex + 1,
+    );
+    if (blockCandles.length === 0) {
+      return;
+    }
+
+    let upperBound = blockCandles[0].getHigh();
+    let lowerBound = blockCandles[0].getLow();
+    for (const candle of blockCandles.slice(1)) {
+      if (candle.getHigh().isGreaterThan(upperBound)) {
+        upperBound = candle.getHigh();
+      }
+      if (candle.getLow().isLessThan(lowerBound)) {
+        lowerBound = candle.getLow();
+      }
+    }
+
+    this.fvgOrderBlocks.set(fvg.getId(), {
+      upperBound,
+      lowerBound,
+    });
+  }
+
+  private getActiveFvgs(): FVGZone[] {
+    return this.fvgDetector
       .getCurrentState()
       .filter((zone) => !zone.isMitigated());
-    return activeZones.find((zone) => zone.getId() === zoneId) ?? null;
+  }
+
+  private getActiveFvgById(zoneId: string): FVGZone | null {
+    return this.getActiveFvgs().find((zone) => zone.getId() === zoneId) ?? null;
+  }
+
+  private resolveEntryZone(fvg: FVGZone): EntryZone {
+    const sizePercent = Number(fvg.getSizePercent().toString());
+    const orderBlock = this.fvgOrderBlocks.get(fvg.getId());
+    const useOrderBlock =
+      sizePercent > StrategyEvaluator.LARGE_FVG_THRESHOLD_PERCENT && orderBlock;
+
+    if (useOrderBlock) {
+      return {
+        type: 'orderBlock',
+        direction: fvg.isBullish() ? 'bullish' : 'bearish',
+        upperBound: orderBlock.upperBound,
+        lowerBound: orderBlock.lowerBound,
+        fvgSizePercent: sizePercent,
+      };
+    }
+
+    return {
+      type: 'fvg',
+      direction: fvg.isBullish() ? 'bullish' : 'bearish',
+      upperBound: fvg.getUpperBound(),
+      lowerBound: fvg.getLowerBound(),
+      fvgSizePercent: sizePercent,
+    };
   }
 }

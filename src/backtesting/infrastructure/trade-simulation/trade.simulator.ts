@@ -7,7 +7,8 @@ import { Trade } from 'src/backtesting/domain/entities/trade.entity';
 import { ITradeSimulator } from 'src/backtesting/domain/interfaces/trade-simulator.interface';
 import { RiskModel } from 'src/backtesting/domain/value-objects/risk-model.value-object';
 
-type FvgMetadata = {
+type EntryZoneMetadata = {
+  type?: unknown;
   upperBound?: unknown;
   lowerBound?: unknown;
 };
@@ -40,7 +41,7 @@ export class TradeSimulator implements ITradeSimulator {
       .times(riskModel.getRiskPercent())
       .dividedBy(100);
     const tradeSide = type === 'BUY' ? 'BUY' : 'SELL';
-    const stopLoss = this.resolveStopLossFromFvgOrRiskPercent(
+    const stopLoss = this.resolveStopLossFromEntryZoneOrRiskPercent(
       signal,
       tradeSide,
       entryPrice,
@@ -202,21 +203,21 @@ export class TradeSimulator implements ITradeSimulator {
     }
   }
 
-  private resolveStopLossFromFvgOrRiskPercent(
+  private resolveStopLossFromEntryZoneOrRiskPercent(
     signal: Signal,
     side: 'BUY' | 'SELL',
     entryPrice: Decimal,
     riskModel: RiskModel,
   ): Price | null {
-    const fvgStop = this.getFvgStopPrice(signal, side);
-    if (fvgStop) {
-      const structureStopDecimal = fvgStop.toDecimal();
+    const entryZoneStop = this.getEntryZoneStopPrice(signal, side);
+    if (entryZoneStop) {
+      const structureStopDecimal = entryZoneStop.toDecimal();
       const validForSide =
         side === 'BUY'
           ? structureStopDecimal.lessThan(entryPrice)
           : structureStopDecimal.greaterThan(entryPrice);
       if (validForSide && structureStopDecimal.greaterThan(0)) {
-        return fvgStop;
+        return entryZoneStop;
       }
     }
 
@@ -237,7 +238,7 @@ export class TradeSimulator implements ITradeSimulator {
     return Price.from(fallbackStop.toString());
   }
 
-  private getFvgStopPrice(
+  private getEntryZoneStopPrice(
     signal: Signal,
     side: 'BUY' | 'SELL',
   ): Price | null {
@@ -246,14 +247,14 @@ export class TradeSimulator implements ITradeSimulator {
       return null;
     }
 
-    const fvg = (metadata as Record<string, unknown>).fvg as
-      | FvgMetadata
+    const entryZone = (metadata as Record<string, unknown>).entryZone as
+      | EntryZoneMetadata
       | undefined;
-    if (!fvg || typeof fvg !== 'object') {
+    if (!entryZone || typeof entryZone !== 'object') {
       return null;
     }
 
-    const rawValue = side === 'BUY' ? fvg.lowerBound : fvg.upperBound;
+    const rawValue = side === 'BUY' ? entryZone.lowerBound : entryZone.upperBound;
     if (typeof rawValue !== 'string' && typeof rawValue !== 'number') {
       return null;
     }
