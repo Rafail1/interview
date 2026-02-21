@@ -121,5 +121,13 @@ describe('StrategyEvaluator', () => {
     expect(second[0].getMetadata()).toEqual(
       expect.objectContaining({ reactedZoneId: 'zone-react' }),
     );
+    expect(second[0].getMetadata()).toEqual(
+      expect.objectContaining({
+        structure: expect.objectContaining({
+          swingLow: expect.any(String),
+          swingHigh: expect.any(String),
+        }),
+      }),
+    );
   });
 });

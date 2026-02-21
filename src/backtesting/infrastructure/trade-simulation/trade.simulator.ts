@@ -7,6 +7,11 @@ import { Trade } from 'src/backtesting/domain/entities/trade.entity';
 import { ITradeSimulator } from 'src/backtesting/domain/interfaces/trade-simulator.interface';
 import { RiskModel } from 'src/backtesting/domain/value-objects/risk-model.value-object';
 
+type StructureMetadata = {
+  swingHigh?: unknown;
+  swingLow?: unknown;
+};
+
 @Injectable()
 export class TradeSimulator implements ITradeSimulator {
   private static readonly DEFAULT_INITIAL_BALANCE = new Decimal(10_000);
@@ -34,25 +39,32 @@ export class TradeSimulator implements ITradeSimulator {
     const riskAmount = this.accountBalance
       .times(riskModel.getRiskPercent())
       .dividedBy(100);
-    const stopDistance = entryPrice
-      .times(riskModel.getRiskPercent())
-      .dividedBy(100);
+    const tradeSide = type === 'BUY' ? 'BUY' : 'SELL';
+    const stopLoss = this.resolveStopLossFromStructureOrRiskPercent(
+      signal,
+      tradeSide,
+      entryPrice,
+      riskModel,
+    );
+    if (!stopLoss) {
+      return null;
+    }
+
+    const stopDistance =
+      tradeSide === 'BUY'
+        ? entryPrice.minus(stopLoss.toDecimal())
+        : stopLoss.toDecimal().minus(entryPrice);
     if (stopDistance.lessThanOrEqualTo(0)) {
       return null;
     }
     const quantity = riskAmount.dividedBy(stopDistance);
-    const tradeSide = type === 'BUY' ? 'BUY' : 'SELL';
     const takeDistance = stopDistance.times(riskModel.getRewardRatio());
-    const stopLoss =
-      tradeSide === 'BUY'
-        ? entryPrice.minus(stopDistance)
-        : entryPrice.plus(stopDistance);
     const takeProfit =
       tradeSide === 'BUY'
         ? entryPrice.plus(takeDistance)
         : entryPrice.minus(takeDistance);
 
-    if (stopLoss.lessThanOrEqualTo(0) || takeProfit.lessThanOrEqualTo(0)) {
+    if (takeProfit.lessThanOrEqualTo(0)) {
       return null;
     }
 
@@ -62,7 +74,7 @@ export class TradeSimulator implements ITradeSimulator {
       signal.getPrice(),
       quantity,
       tradeSide,
-      Price.from(stopLoss.toString()),
+      stopLoss,
       Price.from(takeProfit.toString()),
     );
 
@@ -141,5 +153,67 @@ export class TradeSimulator implements ITradeSimulator {
       return takeProfit;
     }
     return null;
+  }
+
+  private resolveStopLossFromStructureOrRiskPercent(
+    signal: Signal,
+    side: 'BUY' | 'SELL',
+    entryPrice: Decimal,
+    riskModel: RiskModel,
+  ): Price | null {
+    const structureStop = this.getStructureStopPrice(signal, side);
+    if (structureStop) {
+      const structureStopDecimal = structureStop.toDecimal();
+      const validForSide =
+        side === 'BUY'
+          ? structureStopDecimal.lessThan(entryPrice)
+          : structureStopDecimal.greaterThan(entryPrice);
+      if (validForSide && structureStopDecimal.greaterThan(0)) {
+        return structureStop;
+      }
+    }
+
+    const fallbackStopDistance = entryPrice
+      .times(riskModel.getRiskPercent())
+      .dividedBy(100);
+    if (fallbackStopDistance.lessThanOrEqualTo(0)) {
+      return null;
+    }
+
+    const fallbackStop =
+      side === 'BUY'
+        ? entryPrice.minus(fallbackStopDistance)
+        : entryPrice.plus(fallbackStopDistance);
+    if (fallbackStop.lessThanOrEqualTo(0)) {
+      return null;
+    }
+    return Price.from(fallbackStop.toString());
+  }
+
+  private getStructureStopPrice(
+    signal: Signal,
+    side: 'BUY' | 'SELL',
+  ): Price | null {
+    const metadata = signal.getMetadata();
+    if (!metadata || typeof metadata !== 'object') {
+      return null;
+    }
+
+    const structure = (metadata as Record<string, unknown>)
+      .structure as StructureMetadata | undefined;
+    if (!structure || typeof structure !== 'object') {
+      return null;
+    }
+
+    const rawValue = side === 'BUY' ? structure.swingLow : structure.swingHigh;
+    if (typeof rawValue !== 'string' && typeof rawValue !== 'number') {
+      return null;
+    }
+
+    try {
+      return Price.from(rawValue);
+    } catch {
+      return null;
+    }
   }
 }

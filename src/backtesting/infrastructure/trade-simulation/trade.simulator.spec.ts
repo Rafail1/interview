@@ -82,4 +82,50 @@ describe('TradeSimulator', () => {
     expect(opened?.getStopLossPrice()?.toString()).toBe('98');
     expect(opened?.getTakeProfitPrice()?.toString()).toBe('104');
   });
+
+  it('uses structure swingLow as BUY stop-loss when present in signal metadata', () => {
+    const simulator = new TradeSimulator();
+    const risk = RiskModel.from(2, 2);
+    const signal = Signal.createBuy(
+      'buy-4',
+      OHLCV.from('100', '100', '100', '100', '1', '1').getClose(),
+      Timestamp.fromMs(1_700_000_000_000),
+      'test',
+      {
+        structure: {
+          swingLow: '95',
+          swingHigh: '105',
+        },
+      },
+    );
+
+    const opened = simulator.processSignal(signal, risk);
+    expect(opened).not.toBeNull();
+    expect(opened?.getQuantity().toFixed(2)).toBe('40.00');
+    expect(opened?.getStopLossPrice()?.toString()).toBe('95');
+    expect(opened?.getTakeProfitPrice()?.toString()).toBe('110');
+  });
+
+  it('falls back to riskPercent stop-loss if structure stop is invalid for side', () => {
+    const simulator = new TradeSimulator();
+    const risk = RiskModel.from(2, 2);
+    const signal = Signal.createBuy(
+      'buy-5',
+      OHLCV.from('100', '100', '100', '100', '1', '1').getClose(),
+      Timestamp.fromMs(1_700_000_000_000),
+      'test',
+      {
+        structure: {
+          swingLow: '101',
+          swingHigh: '110',
+        },
+      },
+    );
+
+    const opened = simulator.processSignal(signal, risk);
+    expect(opened).not.toBeNull();
+    expect(opened?.getQuantity().toFixed(2)).toBe('100.00');
+    expect(opened?.getStopLossPrice()?.toString()).toBe('98');
+    expect(opened?.getTakeProfitPrice()?.toString()).toBe('104');
+  });
 });

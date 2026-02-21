@@ -67,6 +67,12 @@ export class StrategyEvaluator implements IStrategyEvaluator {
             {
               candle15m: candle15m?.toJSON() ?? null,
               reactedZoneId: matchedZone,
+              structure: {
+                swingHigh: structure.getSwingHigh().toString(),
+                swingLow: structure.getSwingLow().toString(),
+                bosType: structure.getBoSType(),
+                bosTimeMs: structure.getBoSTime()?.toMs().toString() ?? null,
+              },
             },
           ),
         ];
@@ -93,6 +99,12 @@ export class StrategyEvaluator implements IStrategyEvaluator {
           {
             candle15m: candle15m?.toJSON() ?? null,
             reactedZoneId: matchedZone,
+            structure: {
+              swingHigh: structure.getSwingHigh().toString(),
+              swingLow: structure.getSwingLow().toString(),
+              bosType: structure.getBoSType(),
+              bosTimeMs: structure.getBoSTime()?.toMs().toString() ?? null,
+            },
           },
         ),
       ];
