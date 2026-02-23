@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Backtest Viewer</title>
+    <link rel="stylesheet" href="/viewer/styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <h1>Backtest Viewer</h1>
+        <p>Load run, view candles, verify entries and exits.</p>
+      </header>
+
+      <section class="controls">
+        <label for="apiBase">API Base</label>
+        <input id="apiBase" type="text" placeholder="http://localhost:3000" />
+        <label for="runId">Run ID</label>
+        <input id="runId" type="text" placeholder="paste run id" />
+        <button id="loadBtn" type="button">Load</button>
+      </section>
+
+      <section class="stats" id="stats"></section>
+
+      <section class="chart-wrap">
+        <div id="chart"></div>
+      </section>
+
+      <section class="trades-wrap">
+        <h2>Trades</h2>
+        <div id="trades"></div>
+      </section>
+    </main>
+
+    <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+    <script src="/viewer/app.js"></script>
+  </body>
+</html>
+

@@ -5,6 +5,8 @@ import {
   NestFastifyApplication,
 } from '@nestjs/platform-fastify';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import fastifyStatic from '@fastify/static';
+import { join } from 'node:path';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
@@ -20,6 +22,11 @@ async function bootstrap() {
       forbidNonWhitelisted: false,
     }),
   );
+
+  await app.register(fastifyStatic, {
+    root: join(process.cwd(), 'public', 'backtest-viewer'),
+    prefix: '/viewer/',
+  });
 
   const config = new DocumentBuilder()
     .setTitle('Boilerplate API')
