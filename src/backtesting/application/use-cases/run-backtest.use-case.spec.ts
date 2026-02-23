@@ -122,7 +122,12 @@ describe('RunBacktestUseCase', () => {
     expect(strategyEvaluatorMock.evaluate).toHaveBeenNthCalledWith(
       1,
       candle1,
-      candle15m,
+      null,
+    );
+    expect(strategyEvaluatorMock.evaluate).toHaveBeenNthCalledWith(
+      2,
+      candle2,
+      null,
     );
     expect(tradeSimulatorMock.processSignal).toHaveBeenCalledTimes(1);
     expect(tradeSimulatorMock.closeOpenTrade).not.toHaveBeenCalledWith(

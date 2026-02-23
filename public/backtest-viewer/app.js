@@ -202,7 +202,7 @@
       const run = await fetchRun(apiBase, runId);
       const candles = await fetchKlines(
         run.symbol,
-        '1m',
+        run.interval,
         Number(run.startTime),
         Number(run.endTime),
       );

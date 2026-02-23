@@ -196,7 +196,10 @@ export class RunBacktestUseCase {
 
         const higherCandleContext = useSameTimeframeContext
           ? candle
-          : this.inRange(candle, activeHigherTimeframeCandle)
+          : this.isClosedHigherContextForLowerCandle(
+                candle,
+                activeHigherTimeframeCandle,
+              )
             ? activeHigherTimeframeCandle
             : null;
 
@@ -391,6 +394,18 @@ export class RunBacktestUseCase {
     return (
       lowerCandle.getOpenTime().isAfterOrEqual(higherCandle.getOpenTime()) &&
       lowerCandle.getOpenTime().isBeforeOrEqual(higherCandle.getCloseTime())
+    );
+  }
+
+  private isClosedHigherContextForLowerCandle(
+    lowerCandle: Candle,
+    higherCandle: Candle | null,
+  ): higherCandle is Candle {
+    return (
+      this.inRange(lowerCandle, higherCandle) &&
+      lowerCandle
+        .getCloseTime()
+        .isAfterOrEqual(higherCandle.getCloseTime())
     );
   }
 }
