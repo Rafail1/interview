@@ -2,8 +2,10 @@
   const apiInput = document.getElementById("apiBase");
   const runInput = document.getElementById("runId");
   const loadBtn = document.getElementById("loadBtn");
+  const showZonesInput = document.getElementById("showZones");
   const statsEl = document.getElementById("stats");
   const tradesEl = document.getElementById("trades");
+  const zonesEl = document.getElementById("zones");
   const chartHost = document.getElementById("chart");
 
   const savedApi = localStorage.getItem("bt_viewer_api");
@@ -41,9 +43,41 @@
     wickUpColor: "#168b6f",
     wickDownColor: "#cc5a38",
   });
+  const maxCandlesToRender = 8000;
+  const maxZonesToRender = 120;
+  const zoneSeries = [];
+  let currentRun = null;
+  let currentZones = [];
 
   function toUnixSeconds(ms) {
     return Math.floor(Number(ms) / 1000);
+  }
+
+  function intervalToMs(interval) {
+    const map = {
+      "1m": 60_000,
+      "3m": 180_000,
+      "5m": 300_000,
+      "15m": 900_000,
+      "30m": 1_800_000,
+      "1h": 3_600_000,
+      "2h": 7_200_000,
+      "4h": 14_400_000,
+      "6h": 21_600_000,
+      "8h": 28_800_000,
+      "12h": 43_200_000,
+      "1d": 86_400_000,
+      "3d": 259_200_000,
+      "1w": 604_800_000,
+      "1mo": 2_592_000_000,
+    };
+    return map[interval] || 60_000;
+  }
+
+  function toBarOpenSeconds(ms, interval) {
+    const intervalMs = intervalToMs(interval);
+    const alignedMs = Math.floor(Number(ms) / intervalMs) * intervalMs;
+    return Math.floor(alignedMs / 1000);
   }
 
   function escapeHtml(value) {
@@ -108,10 +142,113 @@
     `;
   }
 
+  function renderZones(zones) {
+    if (!zones.length) {
+      zonesEl.innerHTML = "<p>No FVG zones returned for this run.</p>";
+      return;
+    }
+    const rows = zones
+      .map((z) => {
+        const dirClass = z.direction === "bullish" ? "bull" : "bear";
+        const endValue = z.endTime
+          ? new Date(Number(z.endTime)).toISOString()
+          : "-";
+        return `
+          <tr>
+            <td>${escapeHtml(z.id)}</td>
+            <td><span class="tag ${dirClass}">${escapeHtml(z.direction)}</span></td>
+            <td>${new Date(Number(z.startTime)).toISOString()}</td>
+            <td>${endValue}</td>
+            <td>${escapeHtml(z.lowerBound)}</td>
+            <td>${escapeHtml(z.upperBound)}</td>
+            <td>${escapeHtml(z.description)}</td>
+          </tr>
+        `;
+      })
+      .join("");
+    zonesEl.innerHTML = `
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Direction</th>
+            <th>Start</th>
+            <th>End</th>
+            <th>Low</th>
+            <th>High</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    `;
+  }
+
+  function renderZoneOverlays(run, zones) {
+    while (zoneSeries.length > 0) {
+      const series = zoneSeries.pop();
+      chart.removeSeries(series);
+    }
+    if (!showZonesInput.checked || !zones.length || !run) {
+      return;
+    }
+
+    const limitedZones =
+      zones.length > maxZonesToRender
+        ? zones.slice(zones.length - maxZonesToRender)
+        : zones;
+
+    const runEndSec = toBarOpenSeconds(run.endTime, run.interval);
+    for (const zone of limitedZones) {
+      const startSec = toBarOpenSeconds(zone.startTime, run.interval);
+      const endSec = zone.endTime
+        ? toBarOpenSeconds(zone.endTime, run.interval)
+        : runEndSec;
+      const isBull = zone.direction === "bullish";
+      const color = isBull ? "#19836a" : "#bd4b2f";
+
+      const upperSeries = chart.addLineSeries({
+        color,
+        lineWidth: 1,
+        lineStyle: LightweightCharts.LineStyle.Dashed,
+        crosshairMarkerVisible: false,
+        lastValueVisible: false,
+        priceLineVisible: false,
+      });
+      upperSeries.setData([
+        { time: startSec, value: Number(zone.upperBound) },
+        { time: endSec, value: Number(zone.upperBound) },
+      ]);
+      zoneSeries.push(upperSeries);
+
+      const lowerSeries = chart.addLineSeries({
+        color,
+        lineWidth: 1,
+        lineStyle: LightweightCharts.LineStyle.Dashed,
+        crosshairMarkerVisible: false,
+        lastValueVisible: false,
+        priceLineVisible: false,
+      });
+      lowerSeries.setData([
+        { time: startSec, value: Number(zone.lowerBound) },
+        { time: endSec, value: Number(zone.lowerBound) },
+      ]);
+      zoneSeries.push(lowerSeries);
+    }
+  }
+
   async function fetchRun(apiBase, runId) {
     const response = await fetch(`${apiBase}/backtesting/run/${runId}`);
     if (!response.ok) {
       throw new Error(`Run request failed: HTTP ${response.status}`);
+    }
+    return response.json();
+  }
+
+  async function fetchFvgZones(apiBase, runId) {
+    const response = await fetch(`${apiBase}/backtesting/run/${runId}/fvg-zones`);
+    if (!response.ok) {
+      throw new Error(`FVG zones request failed: HTTP ${response.status}`);
     }
     return response.json();
   }
@@ -152,13 +289,20 @@
       }
     }
 
-    return records.map((row) => ({
+    let candles = records.map((row) => ({
       time: toUnixSeconds(row[0]),
       open: Number(row[1]),
       high: Number(row[2]),
       low: Number(row[3]),
       close: Number(row[4]),
     }));
+
+    if (candles.length > maxCandlesToRender) {
+      const step = Math.ceil(candles.length / maxCandlesToRender);
+      candles = candles.filter((_, index) => index % step === 0);
+    }
+
+    return candles;
   }
 
   function setMarkers(run) {
@@ -200,6 +344,7 @@
 
     try {
       const run = await fetchRun(apiBase, runId);
+      const zonesResponse = await fetchFvgZones(apiBase, runId);
       const candles = await fetchKlines(
         run.symbol,
         run.interval,
@@ -208,9 +353,22 @@
       );
       candlesSeries.setData(candles);
       setMarkers(run);
+      currentRun = run;
+      currentZones = zonesResponse.items || [];
+      renderZoneOverlays(run, currentZones);
       chart.timeScale().fitContent();
       renderStats(run);
       renderTrades(run.trades || []);
+      renderZones(currentZones);
+
+      if (
+        candles.length > maxCandlesToRender ||
+        currentZones.length > maxZonesToRender
+      ) {
+        console.warn(
+          `Viewer limits applied: candles=${candles.length}/${maxCandlesToRender}, zones=${currentZones.length}/${maxZonesToRender}`,
+        );
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       alert(message);
@@ -227,8 +385,14 @@
     }
   });
 
+  showZonesInput.addEventListener("change", () => {
+    if (!currentRun) {
+      return;
+    }
+    renderZoneOverlays(currentRun, currentZones);
+  });
+
   if (runInput.value) {
     void load();
   }
 })();
-

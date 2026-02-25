@@ -40,7 +40,7 @@ body {
 
 .controls {
   display: grid;
-  grid-template-columns: auto minmax(180px, 220px) auto 1fr auto;
+  grid-template-columns: auto minmax(180px, 220px) auto 1fr auto auto;
   gap: 0.5rem;
   align-items: center;
   background: var(--panel);
@@ -72,6 +72,20 @@ body {
   font: inherit;
   font-weight: 600;
   cursor: pointer;
+}
+
+.checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.checkbox input {
+  width: auto;
+  min-width: 0;
 }
 
 .stats {
@@ -112,6 +126,8 @@ body {
 }
 
 .trades-wrap {
+.trades-wrap,
+.zones-wrap {
   margin-top: 1rem;
   background: var(--panel);
   border: 1px solid var(--line);
@@ -119,12 +135,17 @@ body {
   padding: 0.75rem;
 }
 
-.trades-wrap h2 {
+.trades-wrap h2,
+.zones-wrap h2 {
   margin: 0 0 0.6rem;
   font-size: 1rem;
 }
 
 #trades {
+  overflow-x: auto;
+}
+
+#zones {
   overflow-x: auto;
 }
 
@@ -150,6 +171,24 @@ td {
   color: var(--danger);
 }
 
+.tag {
+  display: inline-block;
+  border-radius: 999px;
+  padding: 0.08rem 0.42rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.tag.bull {
+  color: #0e6e59;
+  background: #d6efe8;
+}
+
+.tag.bear {
+  color: #8e301a;
+  background: #f9ddd5;
+}
+
 @media (max-width: 900px) {
   .controls {
     grid-template-columns: 1fr;
@@ -159,4 +198,3 @@ td {
     height: 420px;
   }
 }
-

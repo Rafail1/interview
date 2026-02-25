@@ -18,6 +18,10 @@
         <input id="apiBase" type="text" placeholder="http://localhost:3000" />
         <label for="runId">Run ID</label>
         <input id="runId" type="text" placeholder="paste run id" />
+        <label class="checkbox">
+          <input id="showZones" type="checkbox" checked />
+          Show FVG zones
+        </label>
         <button id="loadBtn" type="button">Load</button>
       </section>
 
@@ -31,10 +35,14 @@
         <h2>Trades</h2>
         <div id="trades"></div>
       </section>
+
+      <section class="zones-wrap">
+        <h2>FVG Zones</h2>
+        <div id="zones"></div>
+      </section>
     </main>
 
     <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
     <script src="/viewer/app.js"></script>
   </body>
 </html>
-
