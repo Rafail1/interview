@@ -8,6 +8,7 @@ import { GetBacktestRunProgressUseCase } from './application/use-cases/get-backt
 import { GetBacktestRunSummaryUseCase } from './application/use-cases/get-backtest-run-summary.use-case';
 import { GetBacktestRunSignalsUseCase } from './application/use-cases/get-backtest-run-signals.use-case';
 import { GetBacktestRunEquityUseCase } from './application/use-cases/get-backtest-run-equity.use-case';
+import { GetBacktestRunFvgZonesUseCase } from './application/use-cases/get-backtest-run-fvg-zones.use-case';
 import { ListActiveBacktestRunsUseCase } from './application/use-cases/list-active-backtest-runs.use-case';
 import { ListBacktestRunsUseCase } from './application/use-cases/list-backtest-runs.use-case';
 import { RunBacktestUseCase } from './application/use-cases/run-backtest.use-case';
@@ -49,6 +50,7 @@ import { LOGGER_TOKEN } from 'src/core/interfaces/logger.interface';
     GetBacktestRunSummaryUseCase,
     GetBacktestRunSignalsUseCase,
     GetBacktestRunEquityUseCase,
+    GetBacktestRunFvgZonesUseCase,
     ListActiveBacktestRunsUseCase,
     ListBacktestRunsUseCase,
     RunBacktestUseCase,

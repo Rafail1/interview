@@ -13,6 +13,7 @@ type UseCaseMocks = {
   getBacktestRunSummaryUseCaseMock: { execute: jest.Mock };
   getBacktestRunSignalsUseCaseMock: { execute: jest.Mock };
   getBacktestRunEquityUseCaseMock: { execute: jest.Mock };
+  getBacktestRunFvgZonesUseCaseMock: { execute: jest.Mock };
   listBacktestRunsUseCaseMock: { execute: jest.Mock };
   listActiveBacktestRunsUseCaseMock: { execute: jest.Mock };
 };
@@ -29,6 +30,7 @@ function makeController(overrides?: Partial<UseCaseMocks>) {
     getBacktestRunSummaryUseCaseMock: { execute: jest.fn() },
     getBacktestRunSignalsUseCaseMock: { execute: jest.fn() },
     getBacktestRunEquityUseCaseMock: { execute: jest.fn() },
+    getBacktestRunFvgZonesUseCaseMock: { execute: jest.fn() },
     listBacktestRunsUseCaseMock: { execute: jest.fn() },
     listActiveBacktestRunsUseCaseMock: { execute: jest.fn() },
     ...overrides,
@@ -45,6 +47,7 @@ function makeController(overrides?: Partial<UseCaseMocks>) {
     mocks.getBacktestRunSummaryUseCaseMock as any,
     mocks.getBacktestRunSignalsUseCaseMock as any,
     mocks.getBacktestRunEquityUseCaseMock as any,
+    mocks.getBacktestRunFvgZonesUseCaseMock as any,
     mocks.listBacktestRunsUseCaseMock as any,
     mocks.listActiveBacktestRunsUseCaseMock as any,
   );
@@ -509,6 +512,48 @@ describe('BacktestingController', () => {
     await expect(
       controller.getBacktestRunEquity('missing-run', {}),
     ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('getBacktestRunFvgZones returns reconstructed zones when run exists', async () => {
+    const { controller, mocks } = makeController({
+      getBacktestRunFvgZonesUseCaseMock: {
+        execute: jest.fn().mockResolvedValue({
+          items: [
+            {
+              id: 'fvg-bull-1704069000000',
+              direction: 'bullish',
+              lowerBound: '100',
+              upperBound: '101',
+              startTime: '1704069000000',
+              endTime: '1704069600000',
+              description:
+                'opened position because signal bullish_bos_after_fvg_touch_entry was executed',
+            },
+          ],
+          total: 1,
+        }),
+      },
+    });
+
+    const result = await controller.getBacktestRunFvgZones('run-1');
+
+    expect(mocks.getBacktestRunFvgZonesUseCaseMock.execute).toHaveBeenCalledWith(
+      'run-1',
+    );
+    expect(result.total).toBe(1);
+    expect(result.items[0]).toHaveProperty('id', 'fvg-bull-1704069000000');
+  });
+
+  it('getBacktestRunFvgZones throws NotFoundException when run missing', async () => {
+    const { controller } = makeController({
+      getBacktestRunFvgZonesUseCaseMock: {
+        execute: jest.fn().mockResolvedValue(null),
+      },
+    });
+
+    await expect(controller.getBacktestRunFvgZones('missing-run')).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
   });
 
   it('series endpoints map fromTs/toTs semantic validation to BadRequestException', async () => {

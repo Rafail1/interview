@@ -24,10 +24,12 @@ import { GetBacktestRunProgressUseCase } from 'src/backtesting/application/use-c
 import { GetBacktestRunSummaryUseCase } from 'src/backtesting/application/use-cases/get-backtest-run-summary.use-case';
 import { GetBacktestRunSignalsUseCase } from 'src/backtesting/application/use-cases/get-backtest-run-signals.use-case';
 import { GetBacktestRunEquityUseCase } from 'src/backtesting/application/use-cases/get-backtest-run-equity.use-case';
+import { GetBacktestRunFvgZonesUseCase } from 'src/backtesting/application/use-cases/get-backtest-run-fvg-zones.use-case';
 import { ListBacktestRunsUseCase } from 'src/backtesting/application/use-cases/list-backtest-runs.use-case';
 import { ListActiveBacktestRunsUseCase } from 'src/backtesting/application/use-cases/list-active-backtest-runs.use-case';
 import { RunBacktestUseCase } from 'src/backtesting/application/use-cases/run-backtest.use-case';
 import { BacktestRunEquityResponseDto } from '../dtos/backtest-run-equity-response.dto';
+import { BacktestRunFvgZonesResponseDto } from '../dtos/backtest-run-fvg-zones-response.dto';
 import { BacktestingHealthResponseDto } from '../dtos/backtesting-health-response.dto';
 import { BacktestRunResponseDto } from '../dtos/backtest-run-response.dto';
 import { BacktestRunProgressResponseDto } from '../dtos/backtest-run-progress-response.dto';
@@ -59,6 +61,7 @@ export class BacktestingController {
     private readonly getBacktestRunSummaryUseCase: GetBacktestRunSummaryUseCase,
     private readonly getBacktestRunSignalsUseCase: GetBacktestRunSignalsUseCase,
     private readonly getBacktestRunEquityUseCase: GetBacktestRunEquityUseCase,
+    private readonly getBacktestRunFvgZonesUseCase: GetBacktestRunFvgZonesUseCase,
     private readonly listBacktestRunsUseCase: ListBacktestRunsUseCase,
     private readonly listActiveBacktestRunsUseCase: ListActiveBacktestRunsUseCase,
   ) {}
@@ -256,6 +259,22 @@ export class BacktestingController {
       }
       throw error;
     }
+  }
+
+  @Get('run/:runId/fvg-zones')
+  @ApiOperation({
+    summary: 'Get reconstructed FVG zones with mitigation and execution reason',
+  })
+  @ApiOkResponse({ type: BacktestRunFvgZonesResponseDto })
+  @ApiNotFoundResponse({ description: 'Backtest run not found' })
+  public async getBacktestRunFvgZones(
+    @Param('runId') runId: string,
+  ): Promise<BacktestRunFvgZonesResponseDto> {
+    const zones = await this.getBacktestRunFvgZonesUseCase.execute(runId);
+    if (!zones) {
+      throw new NotFoundException(`Backtest run not found: ${runId}`);
+    }
+    return zones;
   }
 
   private isClientInputError(message: string): boolean {
