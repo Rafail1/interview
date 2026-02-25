@@ -1,4 +1,11 @@
-import { BadRequestException, Body, Controller, Get, Post } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  Post,
+  Query,
+} from '@nestjs/common';
 import {
   ApiCreatedResponse,
   ApiOkResponse,
@@ -6,8 +13,11 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { ListTrackedSymbolsUseCase } from 'src/realtime-signals/application/use-cases/list-tracked-symbols.use-case';
+import { ListFvgZonesUseCase } from 'src/realtime-signals/application/use-cases/list-fvg-zones.use-case';
 import { StartSymbolTrackingUseCase } from 'src/realtime-signals/application/use-cases/start-symbol-tracking.use-case';
 import { StopSymbolTrackingUseCase } from 'src/realtime-signals/application/use-cases/stop-symbol-tracking.use-case';
+import { ListFvgZonesQueryDto } from '../dtos/list-fvg-zones-query.dto';
+import { ListFvgZonesResponseDto } from '../dtos/list-fvg-zones-response.dto';
 import { ListTrackedSymbolsResponseDto } from '../dtos/list-tracked-symbols-response.dto';
 import { StartSymbolTrackingRequestDto } from '../dtos/start-symbol-tracking-request.dto';
 import { StartSymbolTrackingResponseDto } from '../dtos/start-symbol-tracking-response.dto';
@@ -21,6 +31,7 @@ export class RealtimeSignalsController {
     private readonly startSymbolTrackingUseCase: StartSymbolTrackingUseCase,
     private readonly stopSymbolTrackingUseCase: StopSymbolTrackingUseCase,
     private readonly listTrackedSymbolsUseCase: ListTrackedSymbolsUseCase,
+    private readonly listFvgZonesUseCase: ListFvgZonesUseCase,
   ) {}
 
   @Post('track')
@@ -62,6 +73,22 @@ export class RealtimeSignalsController {
     return this.listTrackedSymbolsUseCase.execute();
   }
 
+  @Get('fvg-zones')
+  @ApiOperation({ summary: 'List in-memory realtime FVG zones' })
+  @ApiOkResponse({ type: ListFvgZonesResponseDto })
+  public listFvgZones(
+    @Query() query: ListFvgZonesQueryDto,
+  ): ListFvgZonesResponseDto {
+    try {
+      return this.listFvgZonesUseCase.execute(query);
+    } catch (error) {
+      if (error instanceof Error && this.isClientInputError(error.message)) {
+        throw new BadRequestException(error.message);
+      }
+      throw error;
+    }
+  }
+
   private isClientInputError(message: string): boolean {
     return (
       message === 'symbols must contain at least one valid symbol' ||
@@ -69,4 +96,3 @@ export class RealtimeSignalsController {
     );
   }
 }
-

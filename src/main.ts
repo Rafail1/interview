@@ -28,6 +28,12 @@ async function bootstrap() {
     prefix: '/viewer/',
   });
 
+  await app.register(fastifyStatic, {
+    root: join(process.cwd(), 'public', 'realtime-viewer'),
+    prefix: '/realtime-viewer/',
+    decorateReply: false,
+  });
+
   const config = new DocumentBuilder()
     .setTitle('Boilerplate API')
     .setDescription('Boilerplate API documentation')

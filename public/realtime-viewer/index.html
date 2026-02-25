@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Realtime Tracked Symbols</title>
+    <link rel="stylesheet" href="/realtime-viewer/styles.css" />
+  </head>
+  <body>
+    <main class="layout">
+      <aside class="sidebar">
+        <h1>Realtime Symbols</h1>
+        <p>Symbols from <code>/realtime-signals/tracked</code></p>
+
+        <div class="panel">
+          <label for="apiBase">API Base</label>
+          <input id="apiBase" type="text" placeholder="http://localhost:3000" />
+
+          <label for="interval">Chart Interval</label>
+          <select id="interval">
+            <option value="1m">1m</option>
+            <option value="5m">5m</option>
+            <option value="15m" selected>15m</option>
+            <option value="1h">1h</option>
+          </select>
+
+          <label for="limit">Candles</label>
+          <input id="limit" type="number" min="100" max="1500" step="100" value="500" />
+
+          <label for="refreshSec">Refresh (sec)</label>
+          <input id="refreshSec" type="number" min="5" max="120" step="5" value="15" />
+
+          <label class="inline-checkbox">
+            <input id="showMitigated" type="checkbox" />
+            Show mitigated zones
+          </label>
+
+          <button id="refreshBtn" type="button">Refresh Now</button>
+        </div>
+
+        <h2>Tracked</h2>
+        <div id="trackedList" class="tracked-list"></div>
+      </aside>
+
+      <section class="chart-area">
+        <header class="chart-head">
+          <div id="selectedMeta">No symbol selected</div>
+        </header>
+        <div id="chart"></div>
+      </section>
+    </main>
+
+    <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+    <script src="/realtime-viewer/app.js"></script>
+  </body>
+</html>

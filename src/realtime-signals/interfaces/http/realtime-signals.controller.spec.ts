@@ -18,11 +18,13 @@ describe('RealtimeSignalsController', () => {
     } as any;
     const stopUseCase = { execute: jest.fn() } as any;
     const listUseCase = { execute: jest.fn() } as any;
+    const listFvgZonesUseCase = { execute: jest.fn() } as any;
 
     const controller = new RealtimeSignalsController(
       startUseCase,
       stopUseCase,
       listUseCase,
+      listFvgZonesUseCase,
     );
 
     const result = await controller.startTracking({ symbols: ['BTCUSDT'] });
@@ -45,6 +47,7 @@ describe('RealtimeSignalsController', () => {
       startUseCase,
       { execute: jest.fn() } as any,
       { execute: jest.fn() } as any,
+      { execute: jest.fn() } as any,
     );
 
     await expect(controller.startTracking({ symbols: [] as string[] })).rejects.toBeInstanceOf(
@@ -64,6 +67,7 @@ describe('RealtimeSignalsController', () => {
     const controller = new RealtimeSignalsController(
       { execute: jest.fn() } as any,
       stopUseCase,
+      { execute: jest.fn() } as any,
       { execute: jest.fn() } as any,
     );
 
@@ -94,11 +98,43 @@ describe('RealtimeSignalsController', () => {
       { execute: jest.fn() } as any,
       { execute: jest.fn() } as any,
       listUseCase,
+      { execute: jest.fn() } as any,
     );
 
     const result = controller.listTrackedSymbols();
     expect(listUseCase.execute).toHaveBeenCalledTimes(1);
     expect(result).toHaveProperty('tracked.0.symbol', 'ETHUSDT');
   });
-});
 
+  it('lists realtime fvg zones', () => {
+    const listFvgZonesUseCase = {
+      execute: jest.fn().mockReturnValue({
+        items: [
+          {
+            symbol: 'BTCUSDT',
+            id: 'fvg-bull-1700000000000',
+            direction: 'bullish',
+            upperBound: '101',
+            lowerBound: '100',
+            startTime: '1700000000000',
+            endTime: null,
+            mitigated: false,
+          },
+        ],
+      }),
+    } as any;
+
+    const controller = new RealtimeSignalsController(
+      { execute: jest.fn() } as any,
+      { execute: jest.fn() } as any,
+      { execute: jest.fn() } as any,
+      listFvgZonesUseCase,
+    );
+
+    const result = controller.listFvgZones({ symbol: 'BTCUSDT' });
+    expect(listFvgZonesUseCase.execute).toHaveBeenCalledWith({
+      symbol: 'BTCUSDT',
+    });
+    expect(result).toHaveProperty('items.0.symbol', 'BTCUSDT');
+  });
+});

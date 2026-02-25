@@ -17,6 +17,7 @@ import {
 } from 'src/core/interfaces/logger.interface';
 import {
   IRealtimeSymbolTracker,
+  RealtimeFvgZoneView,
   RealtimeTrackedSymbolView,
   TrackSymbolsResult,
   UntrackSymbolResult,
@@ -152,6 +153,38 @@ export class RealtimeSymbolTrackerService
         startedAt: state.startedAt.toISOString(),
       }))
       .sort((a, b) => a.symbol.localeCompare(b.symbol));
+  }
+
+  public listFvgZones(symbol?: string): RealtimeFvgZoneView[] {
+    const normalizedSymbol = symbol ? this.normalizeSymbol(symbol) : null;
+    const states = normalizedSymbol
+      ? [this.states.get(normalizedSymbol)].filter(
+          (state): state is SymbolTrackerState => Boolean(state),
+        )
+      : Array.from(this.states.values());
+
+    const items: RealtimeFvgZoneView[] = [];
+    for (const state of states) {
+      for (const zone of state.fvgDetector.getCurrentState()) {
+        items.push({
+          symbol: state.symbol,
+          id: zone.getId(),
+          direction: zone.getDirection(),
+          upperBound: zone.getUpperBound().toString(),
+          lowerBound: zone.getLowerBound().toString(),
+          startTime: zone.getCreatedTime().toMs().toString(),
+          endTime: zone.getMitigatedTime()?.toMs().toString() ?? null,
+          mitigated: zone.isMitigated(),
+        });
+      }
+    }
+
+    return items.sort((a, b) => {
+      if (a.symbol !== b.symbol) {
+        return a.symbol.localeCompare(b.symbol);
+      }
+      return Number(a.startTime) - Number(b.startTime);
+    });
   }
 
   private async pollAllSymbols(): Promise<void> {

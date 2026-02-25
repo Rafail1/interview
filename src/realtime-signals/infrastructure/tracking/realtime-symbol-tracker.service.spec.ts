@@ -108,6 +108,47 @@ describe('RealtimeSymbolTrackerService', () => {
     expect(service.getTrackedSymbols()).toEqual([]);
   });
 
+  it('returns fvg zones for tracked symbol', async () => {
+    const marketDataClientMock = {
+      getRecentCandles: jest
+        .fn()
+        .mockResolvedValueOnce([
+          makeCandle('BTCUSDT', 1_700_000_000_000, '15m', {
+            open: '99',
+            high: '100',
+            low: '98',
+            close: '99',
+          }),
+          makeCandle('BTCUSDT', 1_700_000_900_000, '15m', {
+            open: '100',
+            high: '101',
+            low: '99.5',
+            close: '100',
+          }),
+          makeCandle('BTCUSDT', 1_700_001_800_000, '15m', {
+            open: '101',
+            high: '103',
+            low: '101',
+            close: '102',
+          }),
+        ])
+        .mockResolvedValueOnce([]),
+    } as any;
+
+    const service = new RealtimeSymbolTrackerService(
+      configServiceMock as any,
+      marketDataClientMock,
+      loggerMock as any,
+    );
+
+    await service.startTracking(['BTCUSDT']);
+    const zones = service.listFvgZones('BTCUSDT');
+
+    expect(zones.length).toBeGreaterThan(0);
+    expect(zones[0]).toHaveProperty('symbol', 'BTCUSDT');
+    expect(zones[0]).toHaveProperty('direction');
+  });
+
   it('emits fvg_zone_touch then entry_confirmation on tick', async () => {
     const nowMs = 1_700_010_000_000;
     const nowSpy = jest.spyOn(Date, 'now').mockReturnValue(nowMs);

@@ -1,0 +1,155 @@
+:root {
+  --bg: #f4f3ee;
+  --panel: #fffdf7;
+  --line: #d9d4c6;
+  --ink: #1d2028;
+  --muted: #57606a;
+  --accent: #0e7a64;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  color: var(--ink);
+  background:
+    radial-gradient(circle at 15% 0%, #f6e9c9 0%, transparent 30%),
+    radial-gradient(circle at 90% 10%, #dceee8 0%, transparent 25%),
+    var(--bg);
+  font-family: "Space Grotesk", "Avenir Next", "Segoe UI", sans-serif;
+}
+
+.layout {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 320px 1fr;
+}
+
+.sidebar {
+  border-right: 1px solid var(--line);
+  padding: 1rem;
+  background: color-mix(in srgb, var(--panel) 85%, white 15%);
+}
+
+.sidebar h1 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.sidebar p {
+  margin: 0.25rem 0 1rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.panel {
+  display: grid;
+  gap: 0.45rem;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  border-radius: 10px;
+  padding: 0.65rem;
+}
+
+.panel label {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.inline-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+}
+
+.panel input,
+.panel select,
+.panel button {
+  font: inherit;
+  padding: 0.5rem;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+}
+
+.inline-checkbox input {
+  width: auto;
+  margin: 0;
+}
+
+.panel button {
+  border: none;
+  color: #fff;
+  background: linear-gradient(135deg, #177f68, #0f5f7d);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.sidebar h2 {
+  margin: 1rem 0 0.5rem;
+  font-size: 1rem;
+}
+
+.tracked-list {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.tracked-item {
+  display: grid;
+  gap: 0.15rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.45rem 0.55rem;
+  cursor: pointer;
+  background: var(--panel);
+}
+
+.tracked-item.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 45%, white 55%);
+}
+
+.tracked-item .symbol {
+  font-weight: 700;
+}
+
+.tracked-item .meta {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.chart-area {
+  padding: 0.8rem;
+}
+
+.chart-head {
+  margin-bottom: 0.5rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+#chart {
+  width: 100%;
+  height: calc(100vh - 2.2rem);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+}
+
+@media (max-width: 1000px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    border-right: none;
+    border-bottom: 1px solid var(--line);
+  }
+
+  #chart {
+    height: 55vh;
+  }
+}
