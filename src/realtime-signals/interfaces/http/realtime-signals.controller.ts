@@ -12,10 +12,12 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
+import { ListActiveMarketSymbolsUseCase } from 'src/realtime-signals/application/use-cases/list-active-market-symbols.use-case';
 import { ListTrackedSymbolsUseCase } from 'src/realtime-signals/application/use-cases/list-tracked-symbols.use-case';
 import { ListFvgZonesUseCase } from 'src/realtime-signals/application/use-cases/list-fvg-zones.use-case';
 import { StartSymbolTrackingUseCase } from 'src/realtime-signals/application/use-cases/start-symbol-tracking.use-case';
 import { StopSymbolTrackingUseCase } from 'src/realtime-signals/application/use-cases/stop-symbol-tracking.use-case';
+import { ListActiveMarketSymbolsResponseDto } from '../dtos/list-active-market-symbols-response.dto';
 import { ListFvgZonesQueryDto } from '../dtos/list-fvg-zones-query.dto';
 import { ListFvgZonesResponseDto } from '../dtos/list-fvg-zones-response.dto';
 import { ListTrackedSymbolsResponseDto } from '../dtos/list-tracked-symbols-response.dto';
@@ -32,6 +34,7 @@ export class RealtimeSignalsController {
     private readonly stopSymbolTrackingUseCase: StopSymbolTrackingUseCase,
     private readonly listTrackedSymbolsUseCase: ListTrackedSymbolsUseCase,
     private readonly listFvgZonesUseCase: ListFvgZonesUseCase,
+    private readonly listActiveMarketSymbolsUseCase: ListActiveMarketSymbolsUseCase,
   ) {}
 
   @Post('track')
@@ -87,6 +90,13 @@ export class RealtimeSignalsController {
       }
       throw error;
     }
+  }
+
+  @Get('active-symbols')
+  @ApiOperation({ summary: 'List symbols currently active by aggTrade TPS' })
+  @ApiOkResponse({ type: ListActiveMarketSymbolsResponseDto })
+  public listActiveSymbols(): ListActiveMarketSymbolsResponseDto {
+    return this.listActiveMarketSymbolsUseCase.execute();
   }
 
   private isClientInputError(message: string): boolean {

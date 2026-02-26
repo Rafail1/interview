@@ -19,12 +19,14 @@ describe('RealtimeSignalsController', () => {
     const stopUseCase = { execute: jest.fn() } as any;
     const listUseCase = { execute: jest.fn() } as any;
     const listFvgZonesUseCase = { execute: jest.fn() } as any;
+    const listActiveSymbolsUseCase = { execute: jest.fn() } as any;
 
     const controller = new RealtimeSignalsController(
       startUseCase,
       stopUseCase,
       listUseCase,
       listFvgZonesUseCase,
+      listActiveSymbolsUseCase,
     );
 
     const result = await controller.startTracking({ symbols: ['BTCUSDT'] });
@@ -48,6 +50,7 @@ describe('RealtimeSignalsController', () => {
       { execute: jest.fn() } as any,
       { execute: jest.fn() } as any,
       { execute: jest.fn() } as any,
+      { execute: jest.fn() } as any,
     );
 
     await expect(controller.startTracking({ symbols: [] as string[] })).rejects.toBeInstanceOf(
@@ -67,6 +70,7 @@ describe('RealtimeSignalsController', () => {
     const controller = new RealtimeSignalsController(
       { execute: jest.fn() } as any,
       stopUseCase,
+      { execute: jest.fn() } as any,
       { execute: jest.fn() } as any,
       { execute: jest.fn() } as any,
     );
@@ -99,6 +103,7 @@ describe('RealtimeSignalsController', () => {
       { execute: jest.fn() } as any,
       listUseCase,
       { execute: jest.fn() } as any,
+      { execute: jest.fn() } as any,
     );
 
     const result = controller.listTrackedSymbols();
@@ -129,12 +134,39 @@ describe('RealtimeSignalsController', () => {
       { execute: jest.fn() } as any,
       { execute: jest.fn() } as any,
       listFvgZonesUseCase,
+      { execute: jest.fn() } as any,
     );
 
     const result = controller.listFvgZones({ symbol: 'BTCUSDT' });
     expect(listFvgZonesUseCase.execute).toHaveBeenCalledWith({
       symbol: 'BTCUSDT',
     });
+    expect(result).toHaveProperty('items.0.symbol', 'BTCUSDT');
+  });
+
+  it('lists active symbols by market activity', () => {
+    const listActiveSymbolsUseCase = {
+      execute: jest.fn().mockReturnValue({
+        items: [
+          {
+            symbol: 'BTCUSDT',
+            tradesPerSecond: 52,
+            lastActiveAt: '2026-02-26T12:00:00.000Z',
+          },
+        ],
+      }),
+    } as any;
+
+    const controller = new RealtimeSignalsController(
+      { execute: jest.fn() } as any,
+      { execute: jest.fn() } as any,
+      { execute: jest.fn() } as any,
+      { execute: jest.fn() } as any,
+      listActiveSymbolsUseCase,
+    );
+
+    const result = controller.listActiveSymbols();
+    expect(listActiveSymbolsUseCase.execute).toHaveBeenCalledTimes(1);
     expect(result).toHaveProperty('items.0.symbol', 'BTCUSDT');
   });
 });
