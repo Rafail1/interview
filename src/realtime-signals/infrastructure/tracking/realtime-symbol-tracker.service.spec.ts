@@ -30,9 +30,13 @@ describe('RealtimeSymbolTrackerService', () => {
     error: jest.fn(),
     debug: jest.fn(),
   };
+  const marketActivityTrackerMock = {
+    getActiveSymbols: jest.fn().mockReturnValue([]),
+  };
 
   beforeEach(() => {
     jest.clearAllMocks();
+    marketActivityTrackerMock.getActiveSymbols.mockReturnValue([]);
   });
 
   it('bootstraps symbol on start and returns tracked list', async () => {
@@ -65,6 +69,7 @@ describe('RealtimeSymbolTrackerService', () => {
     const service = new RealtimeSymbolTrackerService(
       configServiceMock as any,
       marketDataClientMock,
+      marketActivityTrackerMock as any,
       loggerMock as any,
     );
 
@@ -94,6 +99,7 @@ describe('RealtimeSymbolTrackerService', () => {
     const service = new RealtimeSymbolTrackerService(
       configServiceMock as any,
       marketDataClientMock,
+      marketActivityTrackerMock as any,
       loggerMock as any,
     );
 
@@ -138,6 +144,7 @@ describe('RealtimeSymbolTrackerService', () => {
     const service = new RealtimeSymbolTrackerService(
       configServiceMock as any,
       marketDataClientMock,
+      marketActivityTrackerMock as any,
       loggerMock as any,
     );
 
@@ -199,6 +206,7 @@ describe('RealtimeSymbolTrackerService', () => {
     const service = new RealtimeSymbolTrackerService(
       configServiceMock as any,
       marketDataClientMock,
+      marketActivityTrackerMock as any,
       loggerMock as any,
     );
 
@@ -229,5 +237,37 @@ describe('RealtimeSymbolTrackerService', () => {
     ).toBe(true);
 
     nowSpy.mockRestore();
+  });
+
+  it('auto-tracks active symbols and removes them when inactive', async () => {
+    const marketDataClientMock = {
+      getRecentCandles: jest.fn().mockResolvedValue([]),
+    } as any;
+    marketActivityTrackerMock.getActiveSymbols
+      .mockReturnValueOnce([
+        {
+          symbol: 'SOLUSDT',
+          tradesPerSecond: 90,
+          lastActiveAt: '2026-03-01T00:00:00.000Z',
+        },
+      ])
+      .mockReturnValueOnce([]);
+
+    const service = new RealtimeSymbolTrackerService(
+      configServiceMock as any,
+      marketDataClientMock,
+      marketActivityTrackerMock as any,
+      loggerMock as any,
+    );
+
+    await (service as any).pollAllSymbols();
+    expect(service.getTrackedSymbols().some((x) => x.symbol === 'SOLUSDT')).toBe(
+      true,
+    );
+
+    await (service as any).pollAllSymbols();
+    expect(service.getTrackedSymbols().some((x) => x.symbol === 'SOLUSDT')).toBe(
+      false,
+    );
   });
 });

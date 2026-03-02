@@ -34,6 +34,13 @@ type WebSocketLike = {
   close: () => void;
 };
 
+type SymbolActivityState = {
+  windowStartMs: number | null;
+  windowTradeCount: number;
+  avgTradesPerSec: number | null;
+  lastActiveAtMs: number | null;
+};
+
 @Injectable()
 export class MarketActivityTrackerService
   implements IRealtimeMarketActivityTracker, OnModuleInit, OnModuleDestroy
@@ -41,13 +48,19 @@ export class MarketActivityTrackerService
   private static readonly LOG_CONTEXT = 'MarketActivityTrackerService';
   private static readonly DEFAULT_TPS_THRESHOLD = 30;
   private static readonly DEFAULT_RECONCILE_MS = 1_000;
+  private static readonly DEFAULT_ACTIVITY_WINDOW_MS = 3_000;
+  private static readonly DEFAULT_ACTIVE_TTL_MS = 5 * 60 * 1000;
+  private static readonly DEFAULT_EMA_ALPHA = 0.2;
   private static readonly STREAMS_PER_SOCKET = 200;
 
   private readonly http: AxiosInstance;
   private readonly tpsThreshold: number;
   private readonly reconcileMs: number;
+  private readonly activityWindowMs: number;
+  private readonly activeTtlMs: number;
+  private readonly emaAlpha: number;
 
-  private readonly perSecondCounters = new Map<string, number>();
+  private readonly symbolStates = new Map<string, SymbolActivityState>();
   private readonly activeSymbols = new Map<
     string,
     { tradesPerSecond: number; lastActiveAt: Date }
@@ -85,6 +98,30 @@ export class MarketActivityTrackerService
       Number.isFinite(reconcile) && reconcile > 0
         ? Math.floor(reconcile)
         : MarketActivityTrackerService.DEFAULT_RECONCILE_MS;
+
+    const activityWindow = Number(
+      this.configService.get<string>('REALTIME_ACTIVE_SYMBOLS_WINDOW_MS') ??
+        String(MarketActivityTrackerService.DEFAULT_ACTIVITY_WINDOW_MS),
+    );
+    this.activityWindowMs =
+      Number.isFinite(activityWindow) && activityWindow >= 1_000
+        ? Math.floor(activityWindow)
+        : MarketActivityTrackerService.DEFAULT_ACTIVITY_WINDOW_MS;
+
+    const ttl = Number(
+      this.configService.get<string>('REALTIME_ACTIVE_SYMBOLS_TTL_MS') ??
+        String(MarketActivityTrackerService.DEFAULT_ACTIVE_TTL_MS),
+    );
+    this.activeTtlMs =
+      Number.isFinite(ttl) && ttl >= 1_000
+        ? Math.floor(ttl)
+        : MarketActivityTrackerService.DEFAULT_ACTIVE_TTL_MS;
+
+    const alpha = Number(
+      this.configService.get<string>('REALTIME_ACTIVE_SYMBOLS_EMA_ALPHA') ??
+        String(MarketActivityTrackerService.DEFAULT_EMA_ALPHA),
+    );
+    this.emaAlpha = Number.isFinite(alpha) && alpha > 0 && alpha <= 1 ? alpha : 0.2;
   }
 
   public onModuleInit(): void {
@@ -109,7 +146,7 @@ export class MarketActivityTrackerService
       socket.close();
     }
     this.sockets = [];
-    this.perSecondCounters.clear();
+    this.symbolStates.clear();
     this.activeSymbols.clear();
     this.trackedSymbols.clear();
   }
@@ -135,7 +172,7 @@ export class MarketActivityTrackerService
       this.openSockets(symbols);
       this.isBootstrapped = true;
       this.logger.log(
-        `Started market activity tracker: symbols=${symbols.length} threshold=${this.tpsThreshold}tps`,
+        `Started market activity tracker: symbols=${symbols.length} threshold=${this.tpsThreshold}tps windowMs=${this.activityWindowMs} ttlMs=${this.activeTtlMs} alpha=${this.emaAlpha}`,
         MarketActivityTrackerService.LOG_CONTEXT,
       );
     } catch (error) {
@@ -237,33 +274,72 @@ export class MarketActivityTrackerService
       if (!symbol || !this.trackedSymbols.has(symbol)) {
         return;
       }
-      this.perSecondCounters.set(symbol, (this.perSecondCounters.get(symbol) ?? 0) + 1);
+      const state = this.ensureSymbolState(symbol);
+      if (state.windowStartMs === null) {
+        state.windowStartMs = Date.now();
+      }
+      state.windowTradeCount += 1;
     } catch {
       // ignore malformed frame
     }
   }
 
   private reconcileActivity(): void {
-    const now = new Date();
-    const nextActive = new Map<
-      string,
-      { tradesPerSecond: number; lastActiveAt: Date }
-    >();
-
+    const nowMs = Date.now();
     for (const symbol of this.trackedSymbols.values()) {
-      const tps = this.perSecondCounters.get(symbol) ?? 0;
-      if (tps >= this.tpsThreshold) {
-        nextActive.set(symbol, {
-          tradesPerSecond: tps,
-          lastActiveAt: now,
+      const state = this.ensureSymbolState(symbol);
+
+      if (state.windowStartMs === null) {
+        state.windowStartMs = nowMs;
+      }
+
+      const elapsedMs = nowMs - state.windowStartMs;
+      if (elapsedMs >= this.activityWindowMs) {
+        const instantTps =
+          state.windowTradeCount / Math.max(elapsedMs / 1000, 1e-6);
+        state.avgTradesPerSec = this.ema(state.avgTradesPerSec, instantTps);
+        state.windowTradeCount = 0;
+        state.windowStartMs = nowMs;
+      }
+
+      const avgTps = state.avgTradesPerSec ?? 0;
+      if (avgTps >= this.tpsThreshold) {
+        state.lastActiveAtMs = nowMs;
+      }
+
+      const inTtl =
+        state.lastActiveAtMs !== null &&
+        nowMs - state.lastActiveAtMs <= this.activeTtlMs;
+      if (avgTps >= this.tpsThreshold || inTtl) {
+        this.activeSymbols.set(symbol, {
+          tradesPerSecond: Number(avgTps.toFixed(1)),
+          lastActiveAt: new Date(state.lastActiveAtMs ?? nowMs),
         });
+      } else {
+        this.activeSymbols.delete(symbol);
       }
     }
+  }
 
-    this.activeSymbols.clear();
-    for (const [symbol, value] of nextActive.entries()) {
-      this.activeSymbols.set(symbol, value);
+  private ensureSymbolState(symbol: string): SymbolActivityState {
+    const existing = this.symbolStates.get(symbol);
+    if (existing) {
+      return existing;
     }
-    this.perSecondCounters.clear();
+    const created: SymbolActivityState = {
+      windowStartMs: null,
+      windowTradeCount: 0,
+      avgTradesPerSec: null,
+      lastActiveAtMs: null,
+    };
+    this.symbolStates.set(symbol, created);
+    return created;
+  }
+
+  private ema(previous: number | null, value: number): number {
+    if (previous === null) {
+      return value;
+    }
+    return previous + this.emaAlpha * (value - previous);
   }
 }

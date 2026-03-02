@@ -26,9 +26,14 @@ import {
   type IRealtimeMarketDataClient,
   REALTIME_MARKET_DATA_CLIENT_TOKEN,
 } from 'src/realtime-signals/domain/interfaces/realtime-market-data-client.interface';
+import {
+  type IRealtimeMarketActivityTracker,
+  REALTIME_MARKET_ACTIVITY_TRACKER_TOKEN,
+} from 'src/realtime-signals/domain/interfaces/realtime-market-activity-tracker.interface';
 
 type SymbolTrackerState = {
   symbol: string;
+  source: 'manual' | 'active';
   startedAt: Date;
   fvgDetector: FvgDetector;
   structureDetector: StructureDetector;
@@ -37,7 +42,7 @@ type SymbolTrackerState = {
   emittedEntrySignalKeys: Set<string>;
   lastProcessed15mCloseMs: bigint | null;
   lastProcessed1mCloseMs: bigint | null;
-  isProcessing: boolean;
+  isProcessing: boolean; 
 };
 
 @Injectable()
@@ -52,16 +57,23 @@ export class RealtimeSymbolTrackerService
   private static readonly DEFAULT_POLL_INTERVAL_MS = 15_000;
   private static readonly DEFAULT_MIN_FVG_SIZE_PERCENT = 0.8;
   private static readonly DEFAULT_MAX_FVG_SIZE_PERCENT = 4;
+  private static readonly DEFAULT_AUTO_TRACK_ACTIVE_SYMBOLS = true;
+  private static readonly DEFAULT_AUTO_TRACK_MAX_SYMBOLS = 30;
   private readonly states = new Map<string, SymbolTrackerState>();
   private pollTimer: NodeJS.Timeout | null = null;
+  private isPolling = false;
   private readonly pollIntervalMs: number;
   private readonly minFvgSizePercent: number;
   private readonly maxFvgSizePercent: number;
+  private readonly autoTrackActiveSymbols: boolean;
+  private readonly autoTrackMaxSymbols: number;
 
   constructor(
     private readonly configService: ConfigService,
     @Inject(REALTIME_MARKET_DATA_CLIENT_TOKEN)
     private readonly marketDataClient: IRealtimeMarketDataClient,
+    @Inject(REALTIME_MARKET_ACTIVITY_TRACKER_TOKEN)
+    private readonly marketActivityTracker: IRealtimeMarketActivityTracker,
     @Inject(LOGGER_TOKEN)
     private readonly logger: ILogger,
   ) {
@@ -82,6 +94,20 @@ export class RealtimeSymbolTrackerService
       this.configService.get<string>('REALTIME_SIGNALS_MAX_FVG_SIZE_PERCENT') ??
         String(RealtimeSymbolTrackerService.DEFAULT_MAX_FVG_SIZE_PERCENT),
     );
+
+    const autoTrackRaw =
+      this.configService.get<string>('REALTIME_AUTO_TRACK_ACTIVE_SYMBOLS') ??
+      String(RealtimeSymbolTrackerService.DEFAULT_AUTO_TRACK_ACTIVE_SYMBOLS);
+    this.autoTrackActiveSymbols = autoTrackRaw.toLowerCase() !== 'false';
+
+    const maxAutoTrack = Number(
+      this.configService.get<string>('REALTIME_AUTO_TRACK_MAX_SYMBOLS') ??
+        String(RealtimeSymbolTrackerService.DEFAULT_AUTO_TRACK_MAX_SYMBOLS),
+    );
+    this.autoTrackMaxSymbols =
+      Number.isFinite(maxAutoTrack) && maxAutoTrack > 0
+        ? Math.floor(maxAutoTrack)
+        : RealtimeSymbolTrackerService.DEFAULT_AUTO_TRACK_MAX_SYMBOLS;
   }
 
   public onModuleInit(): void {
@@ -112,7 +138,7 @@ export class RealtimeSymbolTrackerService
         alreadyTracking.push(symbol);
         continue;
       }
-      const state = this.createState(symbol);
+      const state = this.createState(symbol, 'manual');
       await this.bootstrapState(state);
       this.states.set(symbol, state);
       started.push(symbol);
@@ -188,8 +214,19 @@ export class RealtimeSymbolTrackerService
   }
 
   private async pollAllSymbols(): Promise<void> {
-    const states = Array.from(this.states.values());
-    await Promise.all(states.map((state) => this.processStateTick(state)));
+    if (this.isPolling) {
+      return;
+    }
+    this.isPolling = true;
+    try {
+      if (this.autoTrackActiveSymbols) {
+        await this.syncActiveSymbolStates();
+      }
+      const states = Array.from(this.states.values());
+      await Promise.all(states.map((state) => this.processStateTick(state)));
+    } finally {
+      this.isPolling = false;
+    }
   }
 
   private async processStateTick(state: SymbolTrackerState): Promise<void> {
@@ -289,7 +326,10 @@ export class RealtimeSymbolTrackerService
     }
   }
 
-  private createState(symbol: string): SymbolTrackerState {
+  private createState(
+    symbol: string,
+    source: 'manual' | 'active',
+  ): SymbolTrackerState {
     const fvgDetector = new FvgDetector();
     const structureDetector = new StructureDetector();
     const strategyEvaluator = new StrategyEvaluator(
@@ -303,6 +343,7 @@ export class RealtimeSymbolTrackerService
 
     return {
       symbol,
+      source,
       startedAt: new Date(),
       fvgDetector,
       structureDetector,
@@ -418,9 +459,40 @@ export class RealtimeSymbolTrackerService
 
   private normalizeSymbol(symbol: string): string {
     const normalized = symbol.trim().toUpperCase();
-    if (!/^[A-Z0-9_]+$/.test(normalized)) {
-      throw new Error(`Invalid symbol: ${symbol}`);
-    }
+    // if (!/^[A-Z0-9_]+$/.test(normalized)) {
+    //   throw new Error(`Invalid symbol: ${symbol}`);
+    // }
     return normalized;
+  }
+
+  private async syncActiveSymbolStates(): Promise<void> {
+    const activeSymbols = this.marketActivityTracker
+      .getActiveSymbols()
+      .slice(0, this.autoTrackMaxSymbols)
+      .map((item) => this.normalizeSymbol(item.symbol));
+    const activeSet = new Set(activeSymbols);
+
+    for (const state of Array.from(this.states.values())) {
+      if (state.source === 'active' && !activeSet.has(state.symbol)) {
+        this.states.delete(state.symbol);
+        this.logger.log(
+          `Auto-untracked inactive symbol=${state.symbol}`,
+          RealtimeSymbolTrackerService.LOG_CONTEXT,
+        );
+      }
+    }
+
+    for (const symbol of activeSymbols) {
+      if (this.states.has(symbol)) {
+        continue;
+      }
+      const state = this.createState(symbol, 'active');
+      await this.bootstrapState(state);
+      this.states.set(symbol, state);
+      this.logger.log(
+        `Auto-tracking active symbol=${symbol}`,
+        RealtimeSymbolTrackerService.LOG_CONTEXT,
+      );
+    }
   }
 }
