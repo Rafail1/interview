@@ -1,4 +1,17 @@
 -- CreateTable
+CREATE TABLE "tasks" (
+    "id" TEXT NOT NULL,
+    "title" TEXT NOT NULL,
+    "description" TEXT,
+    "status" TEXT NOT NULL DEFAULT 'OPEN',
+    "priority" TEXT NOT NULL DEFAULT 'MEDIUM',
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "tasks_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "market_data" (
     "id" TEXT NOT NULL,
     "symbol" TEXT NOT NULL,
@@ -45,6 +58,11 @@ CREATE TABLE "backtest_runs" (
     "symbol" TEXT NOT NULL,
     "interval" TEXT NOT NULL,
     "strategyVersion" TEXT NOT NULL,
+    "status" TEXT NOT NULL DEFAULT 'pending',
+    "errorMessage" TEXT,
+    "processedCandles" INTEGER NOT NULL DEFAULT 0,
+    "generatedSignals" INTEGER NOT NULL DEFAULT 0,
+    "cancelRequestedAt" TIMESTAMP(3),
     "config" JSONB NOT NULL,
     "startTime" BIGINT NOT NULL,
     "endTime" BIGINT NOT NULL,
@@ -59,6 +77,7 @@ CREATE TABLE "backtest_runs" (
     "avgWin" TEXT NOT NULL,
     "avgLoss" TEXT NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "backtest_runs_pkey" PRIMARY KEY ("id")
 );
@@ -107,6 +126,52 @@ CREATE TABLE "equity_points" (
     CONSTRAINT "equity_points_pkey" PRIMARY KEY ("id")
 );
 
+-- CreateTable
+CREATE TABLE "candle_ingestion_jobs" (
+    "id" TEXT NOT NULL,
+    "mode" TEXT NOT NULL,
+    "status" TEXT NOT NULL DEFAULT 'pending',
+    "errorMessage" TEXT,
+    "interval" TEXT NOT NULL DEFAULT '4h',
+    "backfillCandles" INTEGER NOT NULL DEFAULT 1000,
+    "symbolsTotal" INTEGER NOT NULL DEFAULT 0,
+    "symbolsCompleted" INTEGER NOT NULL DEFAULT 0,
+    "symbolsFailed" INTEGER NOT NULL DEFAULT 0,
+    "symbolsSkipped" INTEGER NOT NULL DEFAULT 0,
+    "configHash" TEXT NOT NULL,
+    "freshnessTargetMs" BIGINT,
+    "cancelRequestedAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "startedAt" TIMESTAMP(3),
+    "completedAt" TIMESTAMP(3),
+
+    CONSTRAINT "candle_ingestion_jobs_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "candle_ingestion_symbol_runs" (
+    "id" TEXT NOT NULL,
+    "jobId" TEXT NOT NULL,
+    "symbol" TEXT NOT NULL,
+    "interval" TEXT NOT NULL,
+    "status" TEXT NOT NULL DEFAULT 'pending',
+    "errorMessage" TEXT,
+    "fromOpenTime" BIGINT,
+    "toOpenTime" BIGINT,
+    "lastSyncedOpenTime" BIGINT,
+    "processedCandles" INTEGER NOT NULL DEFAULT 0,
+    "insertedCandles" INTEGER NOT NULL DEFAULT 0,
+    "updatedCandles" INTEGER NOT NULL DEFAULT 0,
+    "retries" INTEGER NOT NULL DEFAULT 0,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "startedAt" TIMESTAMP(3),
+    "completedAt" TIMESTAMP(3),
+
+    CONSTRAINT "candle_ingestion_symbol_runs_pkey" PRIMARY KEY ("id")
+);
+
 -- CreateIndex
 CREATE INDEX "market_data_symbol_interval_openTime_idx" ON "market_data"("symbol", "interval", "openTime");
 
@@ -123,6 +188,9 @@ CREATE INDEX "download_jobs_symbol_interval_status_idx" ON "download_jobs"("symb
 CREATE INDEX "backtest_runs_symbol_strategyVersion_createdAt_idx" ON "backtest_runs"("symbol", "strategyVersion", "createdAt");
 
 -- CreateIndex
+CREATE INDEX "backtest_runs_status_updatedAt_idx" ON "backtest_runs"("status", "updatedAt");
+
+-- CreateIndex
 CREATE INDEX "backtest_trades_backtestRunId_status_idx" ON "backtest_trades"("backtestRunId", "status");
 
 -- CreateIndex
@@ -130,6 +198,24 @@ CREATE INDEX "signal_events_backtestRunId_timestamp_idx" ON "signal_events"("bac
 
 -- CreateIndex
 CREATE INDEX "equity_points_backtestRunId_timestamp_idx" ON "equity_points"("backtestRunId", "timestamp");
+
+-- CreateIndex
+CREATE INDEX "candle_ingestion_jobs_status_updatedAt_idx" ON "candle_ingestion_jobs"("status", "updatedAt");
+
+-- CreateIndex
+CREATE INDEX "candle_ingestion_jobs_configHash_createdAt_idx" ON "candle_ingestion_jobs"("configHash", "createdAt");
+
+-- CreateIndex
+CREATE INDEX "candle_ingestion_symbol_runs_jobId_status_idx" ON "candle_ingestion_symbol_runs"("jobId", "status");
+
+-- CreateIndex
+CREATE INDEX "candle_ingestion_symbol_runs_symbol_interval_status_idx" ON "candle_ingestion_symbol_runs"("symbol", "interval", "status");
+
+-- CreateIndex
+CREATE INDEX "candle_ingestion_symbol_runs_symbol_interval_lastSyncedOpen_idx" ON "candle_ingestion_symbol_runs"("symbol", "interval", "lastSyncedOpenTime");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "candle_ingestion_symbol_runs_jobId_symbol_interval_key" ON "candle_ingestion_symbol_runs"("jobId", "symbol", "interval");
 
 -- AddForeignKey
 ALTER TABLE "backtest_trades" ADD CONSTRAINT "backtest_trades_backtestRunId_fkey" FOREIGN KEY ("backtestRunId") REFERENCES "backtest_runs"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -139,3 +225,6 @@ ALTER TABLE "signal_events" ADD CONSTRAINT "signal_events_backtestRunId_fkey" FO
 
 -- AddForeignKey
 ALTER TABLE "equity_points" ADD CONSTRAINT "equity_points_backtestRunId_fkey" FOREIGN KEY ("backtestRunId") REFERENCES "backtest_runs"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "candle_ingestion_symbol_runs" ADD CONSTRAINT "candle_ingestion_symbol_runs_jobId_fkey" FOREIGN KEY ("jobId") REFERENCES "candle_ingestion_jobs"("id") ON DELETE CASCADE ON UPDATE CASCADE;

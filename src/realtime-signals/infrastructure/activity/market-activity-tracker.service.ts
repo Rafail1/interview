@@ -46,7 +46,7 @@ export class MarketActivityTrackerService
   implements IRealtimeMarketActivityTracker, OnModuleInit, OnModuleDestroy
 {
   private static readonly LOG_CONTEXT = 'MarketActivityTrackerService';
-  private static readonly DEFAULT_TPS_THRESHOLD = 30;
+  private static readonly DEFAULT_TPS_THRESHOLD = 50;
   private static readonly DEFAULT_RECONCILE_MS = 1_000;
   private static readonly DEFAULT_ACTIVITY_WINDOW_MS = 3_000;
   private static readonly DEFAULT_ACTIVE_TTL_MS = 5 * 60 * 1000;
