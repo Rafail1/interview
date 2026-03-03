@@ -146,3 +146,68 @@ model EquityPoint {
   @@index([backtestRunId, timestamp])
   @@map("equity_points")
 }
+
+// Candle ingestion pipeline models
+model CandleIngestionJob {
+  id                    String   @id @default(uuid())
+  mode                  String   // backfill | incremental
+  status                String   @default("pending") // pending | running | completed | failed | cancelled | completed_with_errors
+  errorMessage          String?
+
+  // Job config snapshot
+  interval              String   @default("4h")
+  backfillCandles       Int      @default(1000)
+  symbolsTotal          Int      @default(0)
+  symbolsCompleted      Int      @default(0)
+  symbolsFailed         Int      @default(0)
+  symbolsSkipped        Int      @default(0)
+
+  // Idempotency / dedupe key from effective config
+  configHash            String
+
+  // Optional freshness marker for scheduler/policy
+  freshnessTargetMs     BigInt?
+
+  symbolRuns            CandleIngestionSymbolRun[]
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  startedAt             DateTime?
+  completedAt           DateTime?
+
+  @@index([status, updatedAt])
+  @@index([configHash, createdAt])
+  @@map("candle_ingestion_jobs")
+}
+
+model CandleIngestionSymbolRun {
+  id                    String   @id @default(uuid())
+  job                   CandleIngestionJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  jobId                 String
+
+  symbol                String
+  interval              String
+  status                String   @default("pending") // pending | running | completed | failed | skipped
+  errorMessage          String?
+
+  // Resumable checkpoint
+  fromOpenTime          BigInt?
+  toOpenTime            BigInt?
+  lastSyncedOpenTime    BigInt?
+
+  // Progress counters
+  processedCandles      Int      @default(0)
+  insertedCandles       Int      @default(0)
+  updatedCandles        Int      @default(0)
+  retries               Int      @default(0)
+
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  startedAt             DateTime?
+  completedAt           DateTime?
+
+  @@unique([jobId, symbol, interval])
+  @@index([jobId, status])
+  @@index([symbol, interval, status])
+  @@index([symbol, interval, lastSyncedOpenTime])
+  @@map("candle_ingestion_symbol_runs")
+}

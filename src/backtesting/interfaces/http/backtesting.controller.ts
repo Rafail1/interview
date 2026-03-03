@@ -18,6 +18,9 @@ import {
 import { GetImportJobStatusUseCase } from 'src/backtesting/application/use-cases/get-import-job-status.use-case';
 import { GetImportQueueOverviewUseCase } from 'src/backtesting/application/use-cases/get-import-queue-overview.use-case';
 import { ImportBinanceDataUseCase } from 'src/backtesting/application/use-cases/import-binance-data.use-case';
+import { StartCandleIngestionJobUseCase } from 'src/backtesting/application/use-cases/start-candle-ingestion-job.use-case';
+import { GetCandleIngestionJobStatusUseCase } from 'src/backtesting/application/use-cases/get-candle-ingestion-job-status.use-case';
+import { GetCandleIngestionJobSymbolRunsUseCase } from 'src/backtesting/application/use-cases/get-candle-ingestion-job-symbol-runs.use-case';
 import { GetBacktestRunUseCase } from 'src/backtesting/application/use-cases/get-backtest-run.use-case';
 import { CancelBacktestRunUseCase } from 'src/backtesting/application/use-cases/cancel-backtest-run.use-case';
 import { GetBacktestRunProgressUseCase } from 'src/backtesting/application/use-cases/get-backtest-run-progress.use-case';
@@ -37,6 +40,8 @@ import { BacktestRunSummaryResponseDto } from '../dtos/backtest-run-summary-resp
 import { BacktestRunSeriesQueryDto } from '../dtos/backtest-run-series-query.dto';
 import { BacktestRunSignalsResponseDto } from '../dtos/backtest-run-signals-response.dto';
 import { CancelBacktestRunResponseDto } from '../dtos/cancel-backtest-run-response.dto';
+import { CandleIngestionJobStatusResponseDto } from '../dtos/candle-ingestion-job-status-response.dto';
+import { CandleIngestionJobSymbolRunsResponseDto } from '../dtos/candle-ingestion-job-symbol-runs-response.dto';
 import { ImportBinanceDataRequestDto } from '../dtos/import-binance-data-request.dto';
 import { ImportBinanceDataResponseDto } from '../dtos/import-binance-data-response.dto';
 import { ImportJobStatusResponseDto } from '../dtos/import-job-status-response.dto';
@@ -46,12 +51,17 @@ import { ListBacktestRunsResponseDto } from '../dtos/list-backtest-runs-response
 import { ListActiveBacktestRunsResponseDto } from '../dtos/list-active-backtest-runs-response.dto';
 import { RunBacktestRequestDto } from '../dtos/run-backtest-request.dto';
 import { RunBacktestResponseDto } from '../dtos/run-backtest-response.dto';
+import { StartCandleIngestionJobRequestDto } from '../dtos/start-candle-ingestion-job-request.dto';
+import { StartCandleIngestionJobResponseDto } from '../dtos/start-candle-ingestion-job-response.dto';
 
 @ApiTags('backtesting')
 @Controller('backtesting')
 export class BacktestingController {
   constructor(
     private readonly importBinanceDataUseCase: ImportBinanceDataUseCase,
+    private readonly startCandleIngestionJobUseCase: StartCandleIngestionJobUseCase,
+    private readonly getCandleIngestionJobStatusUseCase: GetCandleIngestionJobStatusUseCase,
+    private readonly getCandleIngestionJobSymbolRunsUseCase: GetCandleIngestionJobSymbolRunsUseCase,
     private readonly getImportJobStatusUseCase: GetImportJobStatusUseCase,
     private readonly getImportQueueOverviewUseCase: GetImportQueueOverviewUseCase,
     private readonly runBacktestUseCase: RunBacktestUseCase,
@@ -91,6 +101,53 @@ export class BacktestingController {
       }
       throw error;
     }
+  }
+
+  @Post('ingestion/jobs')
+  @ApiOperation({ summary: 'Start asynchronous candle ingestion job' })
+  @ApiCreatedResponse({ type: StartCandleIngestionJobResponseDto })
+  public async startCandleIngestionJob(
+    @Body() body: StartCandleIngestionJobRequestDto,
+  ): Promise<StartCandleIngestionJobResponseDto> {
+    try {
+      return await this.startCandleIngestionJobUseCase.execute(body);
+    } catch (error) {
+      if (error instanceof Error && this.isClientInputError(error.message)) {
+        throw new BadRequestException(error.message);
+      }
+      throw error;
+    }
+  }
+
+  @Get('ingestion/jobs/:jobId')
+  @ApiOperation({ summary: 'Get candle ingestion job status' })
+  @ApiOkResponse({ type: CandleIngestionJobStatusResponseDto })
+  @ApiNotFoundResponse({ description: 'Candle ingestion job not found' })
+  public async getCandleIngestionJobStatus(
+    @Param('jobId') jobId: string,
+  ): Promise<CandleIngestionJobStatusResponseDto> {
+    const job = await this.getCandleIngestionJobStatusUseCase.execute(jobId);
+    if (!job) {
+      throw new NotFoundException(`Candle ingestion job not found: ${jobId}`);
+    }
+    return job;
+  }
+
+  @Get('ingestion/jobs/:jobId/symbols')
+  @ApiOperation({ summary: 'Get symbol runs for candle ingestion job' })
+  @ApiOkResponse({ type: CandleIngestionJobSymbolRunsResponseDto })
+  @ApiNotFoundResponse({ description: 'Candle ingestion job not found' })
+  public async getCandleIngestionJobSymbolRuns(
+    @Param('jobId') jobId: string,
+  ): Promise<CandleIngestionJobSymbolRunsResponseDto> {
+    const runs = await this.getCandleIngestionJobSymbolRunsUseCase.execute(jobId);
+    if (!runs) {
+      throw new NotFoundException(`Candle ingestion job not found: ${jobId}`);
+    }
+    return {
+      jobId,
+      runs,
+    };
   }
 
   @Post('run')

@@ -49,3 +49,16 @@ export {
   type ImportJobStatus,
   DOWNLOAD_MANAGER_TOKEN,
 } from './download-manager.interface';
+export {
+  type ICandleIngestionJobRepository,
+  type CandleIngestionJobView,
+  type CandleIngestionSymbolRunView,
+  type CandleIngestionJobStatus,
+  type CandleIngestionMode,
+  type CreateCandleIngestionJobInput,
+  CANDLE_INGESTION_JOB_REPOSITORY_TOKEN,
+} from './candle-ingestion-job-repository.interface';
+export {
+  type ICandleIngestionRunner,
+  CANDLE_INGESTION_RUNNER_TOKEN,
+} from './candle-ingestion-runner.interface';
