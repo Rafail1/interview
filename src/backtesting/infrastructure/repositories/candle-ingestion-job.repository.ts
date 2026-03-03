@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import {
+  CandleIngestionJobDetailsView,
   CandleIngestionJobListView,
   CandleIngestionJobView,
   CandleIngestionSymbolRunView,
@@ -288,6 +289,51 @@ export class CandleIngestionJobRepository implements ICandleIngestionJobReposito
       page: input.page,
       limit: input.limit,
       total,
+    };
+  }
+
+  public async findDetailsById(
+    jobId: string,
+  ): Promise<CandleIngestionJobDetailsView | null> {
+    const job = await this.findById(jobId);
+    if (!job) {
+      return null;
+    }
+
+    const groups = await this.prisma.candleIngestionSymbolRun.groupBy({
+      by: ['status'],
+      where: { jobId },
+      _count: { _all: true },
+    });
+
+    const counts = {
+      pending: 0,
+      running: 0,
+      completed: 0,
+      failed: 0,
+      skipped: 0,
+    };
+    for (const group of groups) {
+      if (group.status in counts) {
+        counts[group.status as keyof typeof counts] = group._count._all;
+      }
+    }
+
+    return {
+      job,
+      symbolRunStats: {
+        total:
+          counts.pending +
+          counts.running +
+          counts.completed +
+          counts.failed +
+          counts.skipped,
+        pending: counts.pending,
+        running: counts.running,
+        completed: counts.completed,
+        failed: counts.failed,
+        skipped: counts.skipped,
+      },
     };
   }
 

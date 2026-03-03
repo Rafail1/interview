@@ -55,6 +55,7 @@ export {
   type CandleIngestionSymbolRunView,
   type CandleIngestionJobListView,
   type CandleIngestionJobListItemView,
+  type CandleIngestionJobDetailsView,
   type ListCandleIngestionJobsInput,
   type CandleIngestionJobStatus,
   type CandleIngestionMode,

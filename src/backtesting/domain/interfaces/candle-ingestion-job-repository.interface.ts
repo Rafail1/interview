@@ -95,6 +95,18 @@ export type CandleIngestionJobListView = {
   total: number;
 };
 
+export type CandleIngestionJobDetailsView = {
+  job: CandleIngestionJobView;
+  symbolRunStats: {
+    total: number;
+    pending: number;
+    running: number;
+    completed: number;
+    failed: number;
+    skipped: number;
+  };
+};
+
 export interface ICandleIngestionJobRepository {
   createJob(input: CreateCandleIngestionJobInput): Promise<CandleIngestionJobView>;
   findById(jobId: string): Promise<CandleIngestionJobView | null>;
@@ -129,6 +141,7 @@ export interface ICandleIngestionJobRepository {
     },
   ): Promise<void>;
   listJobs(input: ListCandleIngestionJobsInput): Promise<CandleIngestionJobListView>;
+  findDetailsById(jobId: string): Promise<CandleIngestionJobDetailsView | null>;
   findSymbolRunsByJobId(jobId: string): Promise<CandleIngestionSymbolRunView[] | null>;
 }
 

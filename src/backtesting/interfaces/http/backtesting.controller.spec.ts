@@ -6,6 +6,7 @@ type UseCaseMocks = {
   importUseCaseMock: { execute: jest.Mock };
   startCandleIngestionJobUseCaseMock: { execute: jest.Mock };
   getCandleIngestionJobStatusUseCaseMock: { execute: jest.Mock };
+  getCandleIngestionJobDetailsUseCaseMock: { execute: jest.Mock };
   getCandleIngestionJobSymbolRunsUseCaseMock: { execute: jest.Mock };
   cancelCandleIngestionJobUseCaseMock: { execute: jest.Mock };
   listCandleIngestionJobsUseCaseMock: { execute: jest.Mock };
@@ -28,6 +29,7 @@ function makeController(overrides?: Partial<UseCaseMocks>) {
     importUseCaseMock: { execute: jest.fn() },
     startCandleIngestionJobUseCaseMock: { execute: jest.fn() },
     getCandleIngestionJobStatusUseCaseMock: { execute: jest.fn() },
+    getCandleIngestionJobDetailsUseCaseMock: { execute: jest.fn() },
     getCandleIngestionJobSymbolRunsUseCaseMock: { execute: jest.fn() },
     cancelCandleIngestionJobUseCaseMock: { execute: jest.fn() },
     listCandleIngestionJobsUseCaseMock: { execute: jest.fn() },
@@ -50,6 +52,7 @@ function makeController(overrides?: Partial<UseCaseMocks>) {
     mocks.importUseCaseMock as any,
     mocks.startCandleIngestionJobUseCaseMock as any,
     mocks.getCandleIngestionJobStatusUseCaseMock as any,
+    mocks.getCandleIngestionJobDetailsUseCaseMock as any,
     mocks.getCandleIngestionJobSymbolRunsUseCaseMock as any,
     mocks.cancelCandleIngestionJobUseCaseMock as any,
     mocks.listCandleIngestionJobsUseCaseMock as any,
@@ -225,6 +228,67 @@ describe('BacktestingController', () => {
 
     await expect(
       controller.getCandleIngestionJobStatus('missing-ing-job'),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('getCandleIngestionJobDetails returns details when found', async () => {
+    const nowSpy = jest.spyOn(Date, 'now').mockReturnValue(
+      new Date('2026-03-03T00:10:00.000Z').getTime(),
+    );
+    const { controller, mocks } = makeController({
+      getCandleIngestionJobDetailsUseCaseMock: {
+        execute: jest.fn().mockResolvedValue({
+          job: {
+            id: 'ing-1',
+            mode: 'incremental',
+            status: 'running',
+            errorMessage: null,
+            interval: '4h',
+            backfillCandles: 1000,
+            symbolsTotal: 500,
+            symbolsCompleted: 120,
+            symbolsFailed: 2,
+            symbolsSkipped: 10,
+            configHash: 'hash1',
+            freshnessTargetMs: null,
+            cancelRequestedAt: null,
+            createdAt: new Date('2026-03-03T00:00:00.000Z'),
+            updatedAt: new Date('2026-03-03T00:10:00.000Z'),
+            startedAt: new Date('2026-03-03T00:00:00.000Z'),
+            completedAt: null,
+          },
+          symbolRunStats: {
+            total: 132,
+            pending: 0,
+            running: 1,
+            completed: 120,
+            failed: 2,
+            skipped: 9,
+          },
+        }),
+      },
+    });
+
+    const result = await controller.getCandleIngestionJobDetails('ing-1');
+    expect(
+      mocks.getCandleIngestionJobDetailsUseCaseMock.execute,
+    ).toHaveBeenCalledWith('ing-1');
+    expect(result).toHaveProperty('job.id', 'ing-1');
+    expect(result).toHaveProperty('symbolRunStats.total', 132);
+    expect(result).toHaveProperty('progressPercent', 99.24);
+    expect(result.eta).toBeInstanceOf(Date);
+    nowSpy.mockRestore();
+  });
+
+  it('getCandleIngestionJobDetails throws NotFoundException when missing', async () => {
+    const { controller } = makeController({
+      getCandleIngestionJobDetailsUseCaseMock: {
+        execute: jest.fn().mockResolvedValue(null),
+      },
+    });
+
+    await expect(
+      controller.getCandleIngestionJobDetails('missing-ing-job'),
     ).rejects.toBeInstanceOf(NotFoundException);
   });
 

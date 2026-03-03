@@ -20,6 +20,7 @@ import { GetImportQueueOverviewUseCase } from 'src/backtesting/application/use-c
 import { ImportBinanceDataUseCase } from 'src/backtesting/application/use-cases/import-binance-data.use-case';
 import { StartCandleIngestionJobUseCase } from 'src/backtesting/application/use-cases/start-candle-ingestion-job.use-case';
 import { GetCandleIngestionJobStatusUseCase } from 'src/backtesting/application/use-cases/get-candle-ingestion-job-status.use-case';
+import { GetCandleIngestionJobDetailsUseCase } from 'src/backtesting/application/use-cases/get-candle-ingestion-job-details.use-case';
 import { GetCandleIngestionJobSymbolRunsUseCase } from 'src/backtesting/application/use-cases/get-candle-ingestion-job-symbol-runs.use-case';
 import { CancelCandleIngestionJobUseCase } from 'src/backtesting/application/use-cases/cancel-candle-ingestion-job.use-case';
 import { ListCandleIngestionJobsUseCase } from 'src/backtesting/application/use-cases/list-candle-ingestion-jobs.use-case';
@@ -33,6 +34,7 @@ import { GetBacktestRunFvgZonesUseCase } from 'src/backtesting/application/use-c
 import { ListBacktestRunsUseCase } from 'src/backtesting/application/use-cases/list-backtest-runs.use-case';
 import { ListActiveBacktestRunsUseCase } from 'src/backtesting/application/use-cases/list-active-backtest-runs.use-case';
 import { RunBacktestUseCase } from 'src/backtesting/application/use-cases/run-backtest.use-case';
+import { CandleIngestionJobDetailsView } from 'src/backtesting/domain/interfaces/candle-ingestion-job-repository.interface';
 import { BacktestRunEquityResponseDto } from '../dtos/backtest-run-equity-response.dto';
 import { BacktestRunFvgZonesResponseDto } from '../dtos/backtest-run-fvg-zones-response.dto';
 import { BacktestingHealthResponseDto } from '../dtos/backtesting-health-response.dto';
@@ -44,6 +46,7 @@ import { BacktestRunSignalsResponseDto } from '../dtos/backtest-run-signals-resp
 import { CancelBacktestRunResponseDto } from '../dtos/cancel-backtest-run-response.dto';
 import { CancelCandleIngestionJobResponseDto } from '../dtos/cancel-candle-ingestion-job-response.dto';
 import { CandleIngestionJobStatusResponseDto } from '../dtos/candle-ingestion-job-status-response.dto';
+import { CandleIngestionJobDetailsResponseDto } from '../dtos/candle-ingestion-job-details-response.dto';
 import { CandleIngestionJobSymbolRunsResponseDto } from '../dtos/candle-ingestion-job-symbol-runs-response.dto';
 import { ImportBinanceDataRequestDto } from '../dtos/import-binance-data-request.dto';
 import { ImportBinanceDataResponseDto } from '../dtos/import-binance-data-response.dto';
@@ -66,6 +69,7 @@ export class BacktestingController {
     private readonly importBinanceDataUseCase: ImportBinanceDataUseCase,
     private readonly startCandleIngestionJobUseCase: StartCandleIngestionJobUseCase,
     private readonly getCandleIngestionJobStatusUseCase: GetCandleIngestionJobStatusUseCase,
+    private readonly getCandleIngestionJobDetailsUseCase: GetCandleIngestionJobDetailsUseCase,
     private readonly getCandleIngestionJobSymbolRunsUseCase: GetCandleIngestionJobSymbolRunsUseCase,
     private readonly cancelCandleIngestionJobUseCase: CancelCandleIngestionJobUseCase,
     private readonly listCandleIngestionJobsUseCase: ListCandleIngestionJobsUseCase,
@@ -154,6 +158,24 @@ export class BacktestingController {
       throw new NotFoundException(`Candle ingestion job not found: ${jobId}`);
     }
     return job;
+  }
+
+  @Get('ingestion/jobs/:jobId/details')
+  @ApiOperation({ summary: 'Get candle ingestion job details with symbol-run stats' })
+  @ApiOkResponse({ type: CandleIngestionJobDetailsResponseDto })
+  @ApiNotFoundResponse({ description: 'Candle ingestion job not found' })
+  public async getCandleIngestionJobDetails(
+    @Param('jobId') jobId: string,
+  ): Promise<CandleIngestionJobDetailsResponseDto> {
+    const details = await this.getCandleIngestionJobDetailsUseCase.execute(jobId);
+    if (!details) {
+      throw new NotFoundException(`Candle ingestion job not found: ${jobId}`);
+    }
+    return {
+      ...details,
+      progressPercent: this.calculateIngestionProgressPercent(details),
+      eta: this.calculateIngestionEta(details),
+    };
   }
 
   @Get('ingestion/jobs/:jobId/symbols')
@@ -379,5 +401,66 @@ export class BacktestingController {
       message === 'Date range cannot be in the future' ||
       message.startsWith('Invalid timeframe:')
     );
+  }
+
+  private calculateIngestionProgressPercent(
+    details: CandleIngestionJobDetailsView,
+  ): number {
+    const total = details.symbolRunStats.total;
+    const done =
+      details.symbolRunStats.completed +
+      details.symbolRunStats.failed +
+      details.symbolRunStats.skipped;
+
+    if (total <= 0) {
+      return details.job.status === 'completed' ||
+        details.job.status === 'completed_with_errors' ||
+        details.job.status === 'cancelled'
+        ? 100
+        : 0;
+    }
+
+    const value = (done / total) * 100;
+    return Number(Math.min(100, Math.max(0, value)).toFixed(2));
+  }
+
+  private calculateIngestionEta(
+    details: CandleIngestionJobDetailsView,
+  ): Date | null {
+    if (details.job.status !== 'running') {
+      return null;
+    }
+    if (!details.job.startedAt) {
+      return null;
+    }
+
+    const total = details.symbolRunStats.total;
+    const done =
+      details.symbolRunStats.completed +
+      details.symbolRunStats.failed +
+      details.symbolRunStats.skipped;
+    const remaining = total - done;
+
+    if (total <= 0 || done <= 0 || remaining <= 0) {
+      return null;
+    }
+
+    const nowMs = Date.now();
+    const startedAtMs = details.job.startedAt.getTime();
+    const elapsedMs = nowMs - startedAtMs;
+    if (elapsedMs <= 0) {
+      return null;
+    }
+
+    const symbolsPerMs = done / elapsedMs;
+    if (symbolsPerMs <= 0) {
+      return null;
+    }
+
+    const etaMs = nowMs + remaining / symbolsPerMs;
+    if (!Number.isFinite(etaMs)) {
+      return null;
+    }
+    return new Date(Math.round(etaMs));
   }
 }

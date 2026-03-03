@@ -4,6 +4,7 @@ import { GetImportQueueOverviewUseCase } from './application/use-cases/get-impor
 import { ImportBinanceDataUseCase } from './application/use-cases/import-binance-data.use-case';
 import { StartCandleIngestionJobUseCase } from './application/use-cases/start-candle-ingestion-job.use-case';
 import { GetCandleIngestionJobStatusUseCase } from './application/use-cases/get-candle-ingestion-job-status.use-case';
+import { GetCandleIngestionJobDetailsUseCase } from './application/use-cases/get-candle-ingestion-job-details.use-case';
 import { GetCandleIngestionJobSymbolRunsUseCase } from './application/use-cases/get-candle-ingestion-job-symbol-runs.use-case';
 import { CancelCandleIngestionJobUseCase } from './application/use-cases/cancel-candle-ingestion-job.use-case';
 import { ListCandleIngestionJobsUseCase } from './application/use-cases/list-candle-ingestion-jobs.use-case';
@@ -53,6 +54,7 @@ import { LOGGER_TOKEN } from 'src/core/interfaces/logger.interface';
     ImportBinanceDataUseCase,
     StartCandleIngestionJobUseCase,
     GetCandleIngestionJobStatusUseCase,
+    GetCandleIngestionJobDetailsUseCase,
     GetCandleIngestionJobSymbolRunsUseCase,
     CancelCandleIngestionJobUseCase,
     ListCandleIngestionJobsUseCase,
