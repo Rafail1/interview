@@ -5,6 +5,8 @@ import { BacktestingController } from './backtesting.controller';
 type UseCaseMocks = {
   importUseCaseMock: { execute: jest.Mock };
   startCandleIngestionJobUseCaseMock: { execute: jest.Mock };
+  startCandleIngestionRunnerUseCaseMock: { execute: jest.Mock };
+  getCandleIngestionRunnerStatusUseCaseMock: { execute: jest.Mock };
   getCandleIngestionJobStatusUseCaseMock: { execute: jest.Mock };
   getCandleIngestionJobDetailsUseCaseMock: { execute: jest.Mock };
   getCandleIngestionJobSymbolRunsUseCaseMock: { execute: jest.Mock };
@@ -28,6 +30,8 @@ function makeController(overrides?: Partial<UseCaseMocks>) {
   const mocks: UseCaseMocks = {
     importUseCaseMock: { execute: jest.fn() },
     startCandleIngestionJobUseCaseMock: { execute: jest.fn() },
+    startCandleIngestionRunnerUseCaseMock: { execute: jest.fn() },
+    getCandleIngestionRunnerStatusUseCaseMock: { execute: jest.fn() },
     getCandleIngestionJobStatusUseCaseMock: { execute: jest.fn() },
     getCandleIngestionJobDetailsUseCaseMock: { execute: jest.fn() },
     getCandleIngestionJobSymbolRunsUseCaseMock: { execute: jest.fn() },
@@ -51,6 +55,8 @@ function makeController(overrides?: Partial<UseCaseMocks>) {
   const controller = new BacktestingController(
     mocks.importUseCaseMock as any,
     mocks.startCandleIngestionJobUseCaseMock as any,
+    mocks.startCandleIngestionRunnerUseCaseMock as any,
+    mocks.getCandleIngestionRunnerStatusUseCaseMock as any,
     mocks.getCandleIngestionJobStatusUseCaseMock as any,
     mocks.getCandleIngestionJobDetailsUseCaseMock as any,
     mocks.getCandleIngestionJobSymbolRunsUseCaseMock as any,
@@ -142,6 +148,48 @@ describe('BacktestingController', () => {
       jobId: 'ing-1',
       status: 'pending',
       configHash: 'abc123',
+    });
+  });
+
+  it('startCandleIngestionRunner resumes pending jobs', async () => {
+    const { controller, mocks } = makeController({
+      startCandleIngestionRunnerUseCaseMock: {
+        execute: jest.fn().mockResolvedValue({
+          resumedJobs: 4,
+        }),
+      },
+    });
+
+    const result = await controller.startCandleIngestionRunner();
+    expect(mocks.startCandleIngestionRunnerUseCaseMock.execute).toHaveBeenCalled();
+    expect(result).toEqual({ resumedJobs: 4 });
+  });
+
+  it('getCandleIngestionRunnerStatus returns runner status', () => {
+    const { controller, mocks } = makeController({
+      getCandleIngestionRunnerStatusUseCaseMock: {
+        execute: jest.fn().mockReturnValue({
+          queuedJobs: 3,
+          runningJobs: 1,
+          maxConcurrentJobs: 1,
+          maxConcurrentSymbols: 6,
+          maxApiConcurrency: 8,
+          apiInFlight: 2,
+        }),
+      },
+    });
+
+    const result = controller.getCandleIngestionRunnerStatus();
+    expect(
+      mocks.getCandleIngestionRunnerStatusUseCaseMock.execute,
+    ).toHaveBeenCalled();
+    expect(result).toEqual({
+      queuedJobs: 3,
+      runningJobs: 1,
+      maxConcurrentJobs: 1,
+      maxConcurrentSymbols: 6,
+      maxApiConcurrency: 8,
+      apiInFlight: 2,
     });
   });
 

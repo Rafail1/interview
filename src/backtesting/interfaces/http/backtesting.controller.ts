@@ -19,6 +19,8 @@ import { GetImportJobStatusUseCase } from 'src/backtesting/application/use-cases
 import { GetImportQueueOverviewUseCase } from 'src/backtesting/application/use-cases/get-import-queue-overview.use-case';
 import { ImportBinanceDataUseCase } from 'src/backtesting/application/use-cases/import-binance-data.use-case';
 import { StartCandleIngestionJobUseCase } from 'src/backtesting/application/use-cases/start-candle-ingestion-job.use-case';
+import { StartCandleIngestionRunnerUseCase } from 'src/backtesting/application/use-cases/start-candle-ingestion-runner.use-case';
+import { GetCandleIngestionRunnerStatusUseCase } from 'src/backtesting/application/use-cases/get-candle-ingestion-runner-status.use-case';
 import { GetCandleIngestionJobStatusUseCase } from 'src/backtesting/application/use-cases/get-candle-ingestion-job-status.use-case';
 import { GetCandleIngestionJobDetailsUseCase } from 'src/backtesting/application/use-cases/get-candle-ingestion-job-details.use-case';
 import { GetCandleIngestionJobSymbolRunsUseCase } from 'src/backtesting/application/use-cases/get-candle-ingestion-job-symbol-runs.use-case';
@@ -61,6 +63,8 @@ import { RunBacktestRequestDto } from '../dtos/run-backtest-request.dto';
 import { RunBacktestResponseDto } from '../dtos/run-backtest-response.dto';
 import { StartCandleIngestionJobRequestDto } from '../dtos/start-candle-ingestion-job-request.dto';
 import { StartCandleIngestionJobResponseDto } from '../dtos/start-candle-ingestion-job-response.dto';
+import { StartCandleIngestionRunnerResponseDto } from '../dtos/start-candle-ingestion-runner-response.dto';
+import { CandleIngestionRunnerStatusResponseDto } from '../dtos/candle-ingestion-runner-status-response.dto';
 
 @ApiTags('backtesting')
 @Controller('backtesting')
@@ -68,6 +72,8 @@ export class BacktestingController {
   constructor(
     private readonly importBinanceDataUseCase: ImportBinanceDataUseCase,
     private readonly startCandleIngestionJobUseCase: StartCandleIngestionJobUseCase,
+    private readonly startCandleIngestionRunnerUseCase: StartCandleIngestionRunnerUseCase,
+    private readonly getCandleIngestionRunnerStatusUseCase: GetCandleIngestionRunnerStatusUseCase,
     private readonly getCandleIngestionJobStatusUseCase: GetCandleIngestionJobStatusUseCase,
     private readonly getCandleIngestionJobDetailsUseCase: GetCandleIngestionJobDetailsUseCase,
     private readonly getCandleIngestionJobSymbolRunsUseCase: GetCandleIngestionJobSymbolRunsUseCase,
@@ -128,6 +134,20 @@ export class BacktestingController {
       }
       throw error;
     }
+  }
+
+  @Post('ingestion/runner/start')
+  @ApiOperation({ summary: 'Start ingestion runner and resume pending/running jobs' })
+  @ApiOkResponse({ type: StartCandleIngestionRunnerResponseDto })
+  public async startCandleIngestionRunner(): Promise<StartCandleIngestionRunnerResponseDto> {
+    return this.startCandleIngestionRunnerUseCase.execute();
+  }
+
+  @Get('ingestion/runner/status')
+  @ApiOperation({ summary: 'Get ingestion runner runtime status' })
+  @ApiOkResponse({ type: CandleIngestionRunnerStatusResponseDto })
+  public getCandleIngestionRunnerStatus(): CandleIngestionRunnerStatusResponseDto {
+    return this.getCandleIngestionRunnerStatusUseCase.execute();
   }
 
   @Get('ingestion/jobs')

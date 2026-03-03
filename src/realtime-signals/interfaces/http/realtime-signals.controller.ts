@@ -13,6 +13,8 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { ListActiveMarketSymbolsUseCase } from 'src/realtime-signals/application/use-cases/list-active-market-symbols.use-case';
+import { StartMarketActivityTrackerUseCase } from 'src/realtime-signals/application/use-cases/start-market-activity-tracker.use-case';
+import { GetMarketActivityTrackerStatusUseCase } from 'src/realtime-signals/application/use-cases/get-market-activity-tracker-status.use-case';
 import { ListTrackedSymbolsUseCase } from 'src/realtime-signals/application/use-cases/list-tracked-symbols.use-case';
 import { ListFvgZonesUseCase } from 'src/realtime-signals/application/use-cases/list-fvg-zones.use-case';
 import { StartSymbolTrackingUseCase } from 'src/realtime-signals/application/use-cases/start-symbol-tracking.use-case';
@@ -25,6 +27,8 @@ import { StartSymbolTrackingRequestDto } from '../dtos/start-symbol-tracking-req
 import { StartSymbolTrackingResponseDto } from '../dtos/start-symbol-tracking-response.dto';
 import { StopSymbolTrackingRequestDto } from '../dtos/stop-symbol-tracking-request.dto';
 import { StopSymbolTrackingResponseDto } from '../dtos/stop-symbol-tracking-response.dto';
+import { StartMarketActivityTrackerResponseDto } from '../dtos/start-market-activity-tracker-response.dto';
+import { MarketActivityTrackerStatusResponseDto } from '../dtos/market-activity-tracker-status-response.dto';
 
 @ApiTags('realtime-signals')
 @Controller('realtime-signals')
@@ -35,7 +39,23 @@ export class RealtimeSignalsController {
     private readonly listTrackedSymbolsUseCase: ListTrackedSymbolsUseCase,
     private readonly listFvgZonesUseCase: ListFvgZonesUseCase,
     private readonly listActiveMarketSymbolsUseCase: ListActiveMarketSymbolsUseCase,
+    private readonly startMarketActivityTrackerUseCase: StartMarketActivityTrackerUseCase,
+    private readonly getMarketActivityTrackerStatusUseCase: GetMarketActivityTrackerStatusUseCase,
   ) {}
+
+  @Post('activity/start')
+  @ApiOperation({ summary: 'Start market activity tracker streams manually' })
+  @ApiOkResponse({ type: StartMarketActivityTrackerResponseDto })
+  public async startMarketActivityTracker(): Promise<StartMarketActivityTrackerResponseDto> {
+    return this.startMarketActivityTrackerUseCase.execute();
+  }
+
+  @Get('activity/status')
+  @ApiOperation({ summary: 'Get market activity tracker runtime status' })
+  @ApiOkResponse({ type: MarketActivityTrackerStatusResponseDto })
+  public getMarketActivityTrackerStatus(): MarketActivityTrackerStatusResponseDto {
+    return this.getMarketActivityTrackerStatusUseCase.execute();
+  }
 
   @Post('track')
   @ApiOperation({ summary: 'Start tracking one or more symbols in realtime' })

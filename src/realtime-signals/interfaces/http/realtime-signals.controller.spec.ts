@@ -20,6 +20,8 @@ describe('RealtimeSignalsController', () => {
     const listUseCase = { execute: jest.fn() } as any;
     const listFvgZonesUseCase = { execute: jest.fn() } as any;
     const listActiveSymbolsUseCase = { execute: jest.fn() } as any;
+    const startMarketActivityTrackerUseCase = { execute: jest.fn() } as any;
+    const getMarketActivityTrackerStatusUseCase = { execute: jest.fn() } as any;
 
     const controller = new RealtimeSignalsController(
       startUseCase,
@@ -27,6 +29,8 @@ describe('RealtimeSignalsController', () => {
       listUseCase,
       listFvgZonesUseCase,
       listActiveSymbolsUseCase,
+      startMarketActivityTrackerUseCase,
+      getMarketActivityTrackerStatusUseCase,
     );
 
     const result = await controller.startTracking({ symbols: ['BTCUSDT'] });
@@ -51,6 +55,8 @@ describe('RealtimeSignalsController', () => {
       { execute: jest.fn() } as any,
       { execute: jest.fn() } as any,
       { execute: jest.fn() } as any,
+      { execute: jest.fn() } as any,
+      { execute: jest.fn() } as any,
     );
 
     await expect(controller.startTracking({ symbols: [] as string[] })).rejects.toBeInstanceOf(
@@ -70,6 +76,8 @@ describe('RealtimeSignalsController', () => {
     const controller = new RealtimeSignalsController(
       { execute: jest.fn() } as any,
       stopUseCase,
+      { execute: jest.fn() } as any,
+      { execute: jest.fn() } as any,
       { execute: jest.fn() } as any,
       { execute: jest.fn() } as any,
       { execute: jest.fn() } as any,
@@ -104,6 +112,8 @@ describe('RealtimeSignalsController', () => {
       listUseCase,
       { execute: jest.fn() } as any,
       { execute: jest.fn() } as any,
+      { execute: jest.fn() } as any,
+      { execute: jest.fn() } as any,
     );
 
     const result = controller.listTrackedSymbols();
@@ -135,6 +145,8 @@ describe('RealtimeSignalsController', () => {
       { execute: jest.fn() } as any,
       listFvgZonesUseCase,
       { execute: jest.fn() } as any,
+      { execute: jest.fn() } as any,
+      { execute: jest.fn() } as any,
     );
 
     const result = controller.listFvgZones({ symbol: 'BTCUSDT' });
@@ -163,10 +175,70 @@ describe('RealtimeSignalsController', () => {
       { execute: jest.fn() } as any,
       { execute: jest.fn() } as any,
       listActiveSymbolsUseCase,
+      { execute: jest.fn() } as any,
+      { execute: jest.fn() } as any,
     );
 
     const result = controller.listActiveSymbols();
     expect(listActiveSymbolsUseCase.execute).toHaveBeenCalledTimes(1);
     expect(result).toHaveProperty('items.0.symbol', 'BTCUSDT');
+  });
+
+  it('starts market activity tracker manually', async () => {
+    const startMarketActivityTrackerUseCase = {
+      execute: jest.fn().mockResolvedValue({
+        started: true,
+        symbolsTracked: 512,
+      }),
+    } as any;
+
+    const controller = new RealtimeSignalsController(
+      { execute: jest.fn() } as any,
+      { execute: jest.fn() } as any,
+      { execute: jest.fn() } as any,
+      { execute: jest.fn() } as any,
+      { execute: jest.fn() } as any,
+      startMarketActivityTrackerUseCase,
+      { execute: jest.fn() } as any,
+    );
+
+    const result = await controller.startMarketActivityTracker();
+    expect(startMarketActivityTrackerUseCase.execute).toHaveBeenCalledTimes(1);
+    expect(result).toEqual({
+      started: true,
+      symbolsTracked: 512,
+    });
+  });
+
+  it('returns market activity tracker status', () => {
+    const getMarketActivityTrackerStatusUseCase = {
+      execute: jest.fn().mockReturnValue({
+        started: true,
+        starting: false,
+        trackedSymbols: 500,
+        activeSymbols: 35,
+        sockets: 3,
+      }),
+    } as any;
+
+    const controller = new RealtimeSignalsController(
+      { execute: jest.fn() } as any,
+      { execute: jest.fn() } as any,
+      { execute: jest.fn() } as any,
+      { execute: jest.fn() } as any,
+      { execute: jest.fn() } as any,
+      { execute: jest.fn() } as any,
+      getMarketActivityTrackerStatusUseCase,
+    );
+
+    const result = controller.getMarketActivityTrackerStatus();
+    expect(getMarketActivityTrackerStatusUseCase.execute).toHaveBeenCalledTimes(1);
+    expect(result).toEqual({
+      started: true,
+      starting: false,
+      trackedSymbols: 500,
+      activeSymbols: 35,
+      sockets: 3,
+    });
   });
 });

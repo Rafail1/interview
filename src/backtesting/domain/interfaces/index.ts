@@ -64,5 +64,6 @@ export {
 } from './candle-ingestion-job-repository.interface';
 export {
   type ICandleIngestionRunner,
+  type CandleIngestionRunnerStatusView,
   CANDLE_INGESTION_RUNNER_TOKEN,
 } from './candle-ingestion-runner.interface';

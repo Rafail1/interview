@@ -3,6 +3,8 @@ import { ConfigModule } from '@nestjs/config';
 import { LOGGER_TOKEN } from 'src/core/interfaces/logger.interface';
 import { NestLoggerService } from 'src/core/infrastructure/nest-logger.service';
 import { ListActiveMarketSymbolsUseCase } from './application/use-cases/list-active-market-symbols.use-case';
+import { StartMarketActivityTrackerUseCase } from './application/use-cases/start-market-activity-tracker.use-case';
+import { GetMarketActivityTrackerStatusUseCase } from './application/use-cases/get-market-activity-tracker-status.use-case';
 import { ListTrackedSymbolsUseCase } from './application/use-cases/list-tracked-symbols.use-case';
 import { ListFvgZonesUseCase } from './application/use-cases/list-fvg-zones.use-case';
 import { StartSymbolTrackingUseCase } from './application/use-cases/start-symbol-tracking.use-case';
@@ -24,6 +26,8 @@ import { RealtimeSignalsController } from './interfaces/http/realtime-signals.co
     ListTrackedSymbolsUseCase,
     ListFvgZonesUseCase,
     ListActiveMarketSymbolsUseCase,
+    StartMarketActivityTrackerUseCase,
+    GetMarketActivityTrackerStatusUseCase,
     {
       provide: LOGGER_TOKEN,
       useClass: NestLoggerService,

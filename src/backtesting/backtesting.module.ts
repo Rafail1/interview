@@ -3,6 +3,8 @@ import { GetImportJobStatusUseCase } from './application/use-cases/get-import-jo
 import { GetImportQueueOverviewUseCase } from './application/use-cases/get-import-queue-overview.use-case';
 import { ImportBinanceDataUseCase } from './application/use-cases/import-binance-data.use-case';
 import { StartCandleIngestionJobUseCase } from './application/use-cases/start-candle-ingestion-job.use-case';
+import { StartCandleIngestionRunnerUseCase } from './application/use-cases/start-candle-ingestion-runner.use-case';
+import { GetCandleIngestionRunnerStatusUseCase } from './application/use-cases/get-candle-ingestion-runner-status.use-case';
 import { GetCandleIngestionJobStatusUseCase } from './application/use-cases/get-candle-ingestion-job-status.use-case';
 import { GetCandleIngestionJobDetailsUseCase } from './application/use-cases/get-candle-ingestion-job-details.use-case';
 import { GetCandleIngestionJobSymbolRunsUseCase } from './application/use-cases/get-candle-ingestion-job-symbol-runs.use-case';
@@ -53,6 +55,8 @@ import { LOGGER_TOKEN } from 'src/core/interfaces/logger.interface';
     PrismaService,
     ImportBinanceDataUseCase,
     StartCandleIngestionJobUseCase,
+    StartCandleIngestionRunnerUseCase,
+    GetCandleIngestionRunnerStatusUseCase,
     GetCandleIngestionJobStatusUseCase,
     GetCandleIngestionJobDetailsUseCase,
     GetCandleIngestionJobSymbolRunsUseCase,

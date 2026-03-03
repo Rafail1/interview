@@ -2,12 +2,12 @@ import {
   Inject,
   Injectable,
   OnModuleDestroy,
-  OnModuleInit,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios, { AxiosInstance } from 'axios';
 import {
   IRealtimeMarketActivityTracker,
+  RealtimeMarketActivityStatusView,
   RealtimeActiveSymbolView,
 } from 'src/realtime-signals/domain/interfaces/realtime-market-activity-tracker.interface';
 import {
@@ -43,7 +43,7 @@ type SymbolActivityState = {
 
 @Injectable()
 export class MarketActivityTrackerService
-  implements IRealtimeMarketActivityTracker, OnModuleInit, OnModuleDestroy
+  implements IRealtimeMarketActivityTracker, OnModuleDestroy
 {
   private static readonly LOG_CONTEXT = 'MarketActivityTrackerService';
   private static readonly DEFAULT_TPS_THRESHOLD = 50;
@@ -70,6 +70,7 @@ export class MarketActivityTrackerService
   private reconcileTimer: NodeJS.Timeout | null = null;
   private reconnectTimer: NodeJS.Timeout | null = null;
   private isBootstrapped = false;
+  private isStarting = false;
 
   constructor(
     private readonly configService: ConfigService,
@@ -124,15 +125,32 @@ export class MarketActivityTrackerService
     this.emaAlpha = Number.isFinite(alpha) && alpha > 0 && alpha <= 1 ? alpha : 0.2;
   }
 
-  public onModuleInit(): void {
+  public async start(): Promise<{ started: boolean; symbolsTracked: number }> {
+    if (this.isBootstrapped || this.isStarting) {
+      return {
+        started: false,
+        symbolsTracked: this.trackedSymbols.size,
+      };
+    }
+    this.isStarting = true;
     this.reconcileTimer = setInterval(() => {
       this.reconcileActivity();
     }, this.reconcileMs);
 
-    void this.bootstrap();
+    try {
+      await this.bootstrap();
+      return {
+        started: this.isBootstrapped,
+        symbolsTracked: this.trackedSymbols.size,
+      };
+    } finally {
+      this.isStarting = false;
+    }
   }
 
   public onModuleDestroy(): void {
+    this.isBootstrapped = false;
+    this.isStarting = false;
     if (this.reconcileTimer) {
       clearInterval(this.reconcileTimer);
       this.reconcileTimer = null;
@@ -159,6 +177,16 @@ export class MarketActivityTrackerService
         lastActiveAt: value.lastActiveAt.toISOString(),
       }))
       .sort((a, b) => b.tradesPerSecond - a.tradesPerSecond);
+  }
+
+  public getStatus(): RealtimeMarketActivityStatusView {
+    return {
+      started: this.isBootstrapped,
+      starting: this.isStarting,
+      trackedSymbols: this.trackedSymbols.size,
+      activeSymbols: this.activeSymbols.size,
+      sockets: this.sockets.length,
+    };
   }
 
   private async bootstrap(): Promise<void> {

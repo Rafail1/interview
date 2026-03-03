@@ -1,5 +1,5 @@
 import axios, { AxiosInstance } from 'axios';
-import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Candle } from 'src/backtesting/domain/entities/candle.entity';
 import {
@@ -8,6 +8,7 @@ import {
   type ICandleIngestionJobRepository,
 } from 'src/backtesting/domain/interfaces/candle-ingestion-job-repository.interface';
 import {
+  type CandleIngestionRunnerStatusView,
   type ICandleIngestionRunner,
 } from 'src/backtesting/domain/interfaces/candle-ingestion-runner.interface';
 import {
@@ -47,7 +48,7 @@ type BinanceKlineRow = [
 
 @Injectable()
 export class CandleIngestionRunnerService
-  implements ICandleIngestionRunner, OnModuleInit
+  implements ICandleIngestionRunner
 {
   private static readonly LOG_CONTEXT = 'CandleIngestionRunnerService';
   private readonly http: AxiosInstance;
@@ -84,16 +85,17 @@ export class CandleIngestionRunnerService
     this.maxApiConcurrency = this.getIntConfig('INGESTION_API_CONCURRENCY', 8);
   }
 
-  public async onModuleInit(): Promise<void> {
+  public async resumePendingJobs(limit = 100): Promise<number> {
     const prisma = this.prisma;
     const resumable = await prisma.candleIngestionJob.findMany({
       where: { status: { in: ['pending', 'running'] } },
       select: { id: true },
-      take: 100,
+      take: limit,
     });
     for (const job of resumable) {
       this.enqueue(job.id);
     }
+    return resumable.length;
   }
 
   public enqueue(jobId: string): void {
@@ -103,6 +105,17 @@ export class CandleIngestionRunnerService
     this.queue.push(jobId);
     this.queued.add(jobId);
     this.schedule();
+  }
+
+  public getStatus(): CandleIngestionRunnerStatusView {
+    return {
+      queuedJobs: this.queue.length,
+      runningJobs: this.running.size,
+      maxConcurrentJobs: this.maxConcurrentJobs,
+      maxConcurrentSymbols: this.maxConcurrentSymbols,
+      maxApiConcurrency: this.maxApiConcurrency,
+      apiInFlight: this.apiInFlight,
+    };
   }
 
   private schedule(): void {
