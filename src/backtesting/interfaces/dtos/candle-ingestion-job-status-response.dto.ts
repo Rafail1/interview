@@ -53,6 +53,9 @@ export class CandleIngestionJobStatusResponseDto {
   readonly freshnessTargetMs: string | null;
 
   @ApiProperty({ nullable: true })
+  readonly cancelRequestedAt: Date | null;
+
+  @ApiProperty({ nullable: true })
   readonly startedAt: Date | null;
 
   @ApiProperty({ nullable: true })

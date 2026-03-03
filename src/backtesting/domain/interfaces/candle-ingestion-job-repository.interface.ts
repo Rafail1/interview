@@ -29,6 +29,7 @@ export type CandleIngestionJobView = {
   symbolsSkipped: number;
   configHash: string;
   freshnessTargetMs: string | null;
+  cancelRequestedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
   startedAt: Date | null;
@@ -64,6 +65,8 @@ export interface ICandleIngestionJobRepository {
     status: 'completed' | 'completed_with_errors',
   ): Promise<void>;
   markFailed(jobId: string, errorMessage: string): Promise<void>;
+  markCancelled(jobId: string): Promise<void>;
+  requestCancel(jobId: string): Promise<boolean>;
   setSymbolsTotal(jobId: string, total: number): Promise<void>;
   incrementCompleted(jobId: string): Promise<void>;
   incrementFailed(jobId: string): Promise<void>;

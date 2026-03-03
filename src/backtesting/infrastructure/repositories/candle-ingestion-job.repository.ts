@@ -77,6 +77,39 @@ export class CandleIngestionJobRepository implements ICandleIngestionJobReposito
     });
   }
 
+  public async markCancelled(jobId: string): Promise<void> {
+    const prisma = this.prisma;
+    await prisma.candleIngestionJob.update({
+      where: { id: jobId },
+      data: {
+        status: 'cancelled',
+        completedAt: new Date(),
+      },
+    });
+  }
+
+  public async requestCancel(jobId: string): Promise<boolean> {
+    const prisma = this.prisma;
+    const result = await prisma.candleIngestionJob.updateMany({
+      where: {
+        id: jobId,
+        status: { in: ['pending', 'running'] },
+      },
+      data: {
+        cancelRequestedAt: new Date(),
+      },
+    });
+    if (result.count > 0) {
+      return true;
+    }
+
+    const exists = await prisma.candleIngestionJob.findUnique({
+      where: { id: jobId },
+      select: { id: true },
+    });
+    return exists !== null;
+  }
+
   public async setSymbolsTotal(jobId: string, total: number): Promise<void> {
     const prisma = this.prisma;
     await prisma.candleIngestionJob.update({
@@ -233,6 +266,7 @@ export class CandleIngestionJobRepository implements ICandleIngestionJobReposito
       configHash: job.configHash,
       freshnessTargetMs:
         job.freshnessTargetMs === null ? null : job.freshnessTargetMs.toString(),
+      cancelRequestedAt: job.cancelRequestedAt,
       createdAt: job.createdAt,
       updatedAt: job.updatedAt,
       startedAt: job.startedAt,

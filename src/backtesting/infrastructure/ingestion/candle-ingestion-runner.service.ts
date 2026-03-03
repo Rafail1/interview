@@ -124,11 +124,15 @@ export class CandleIngestionRunnerService
   }
 
   private async execute(jobId: string): Promise<void> {
-    await this.jobs.markRunning(jobId);
     const job = await this.jobs.findById(jobId);
     if (!job) {
       return;
     }
+    if (job.cancelRequestedAt) {
+      await this.jobs.markCancelled(jobId);
+      return;
+    }
+    await this.jobs.markRunning(jobId);
 
     try {
       const symbols = await this.fetchUsdtSymbols();
@@ -139,6 +143,9 @@ export class CandleIngestionRunnerService
         length: Math.min(this.maxConcurrentSymbols, symbols.length),
       }).map(async () => {
         while (true) {
+          if (await this.isCancellationRequested(jobId)) {
+            return;
+          }
           const index = cursor;
           cursor += 1;
           if (index >= symbols.length) {
@@ -151,6 +158,14 @@ export class CandleIngestionRunnerService
       await Promise.all(workers);
 
       const finalJob = await this.jobs.findById(jobId);
+      if (finalJob?.cancelRequestedAt) {
+        await this.jobs.markCancelled(jobId);
+        this.logger.log(
+          `Cancelled ingestion job=${jobId}`,
+          CandleIngestionRunnerService.LOG_CONTEXT,
+        );
+        return;
+      }
       const hasErrors = (finalJob?.symbolsFailed ?? 0) > 0;
       await this.jobs.markCompleted(
         jobId,
@@ -175,6 +190,9 @@ export class CandleIngestionRunnerService
     job: CandleIngestionJobView,
     symbol: string,
   ): Promise<void> {
+    if (await this.isCancellationRequested(job.id)) {
+      return;
+    }
     for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
       try {
         await this.processSymbol(job, symbol, attempt);
@@ -194,6 +212,11 @@ export class CandleIngestionRunnerService
         await this.sleep(Math.pow(2, attempt) * 500);
       }
     }
+  }
+
+  private async isCancellationRequested(jobId: string): Promise<boolean> {
+    const job = await this.jobs.findById(jobId);
+    return Boolean(job?.cancelRequestedAt);
   }
 
   private async processSymbol(

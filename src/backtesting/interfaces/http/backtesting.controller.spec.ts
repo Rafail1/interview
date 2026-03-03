@@ -7,6 +7,7 @@ type UseCaseMocks = {
   startCandleIngestionJobUseCaseMock: { execute: jest.Mock };
   getCandleIngestionJobStatusUseCaseMock: { execute: jest.Mock };
   getCandleIngestionJobSymbolRunsUseCaseMock: { execute: jest.Mock };
+  cancelCandleIngestionJobUseCaseMock: { execute: jest.Mock };
   getStatusUseCaseMock: { execute: jest.Mock };
   getQueueOverviewUseCaseMock: { execute: jest.Mock };
   runBacktestUseCaseMock: { execute: jest.Mock };
@@ -27,6 +28,7 @@ function makeController(overrides?: Partial<UseCaseMocks>) {
     startCandleIngestionJobUseCaseMock: { execute: jest.fn() },
     getCandleIngestionJobStatusUseCaseMock: { execute: jest.fn() },
     getCandleIngestionJobSymbolRunsUseCaseMock: { execute: jest.fn() },
+    cancelCandleIngestionJobUseCaseMock: { execute: jest.fn() },
     getStatusUseCaseMock: { execute: jest.fn() },
     getQueueOverviewUseCaseMock: { execute: jest.fn() },
     runBacktestUseCaseMock: { execute: jest.fn() },
@@ -47,6 +49,7 @@ function makeController(overrides?: Partial<UseCaseMocks>) {
     mocks.startCandleIngestionJobUseCaseMock as any,
     mocks.getCandleIngestionJobStatusUseCaseMock as any,
     mocks.getCandleIngestionJobSymbolRunsUseCaseMock as any,
+    mocks.cancelCandleIngestionJobUseCaseMock as any,
     mocks.getStatusUseCaseMock as any,
     mocks.getQueueOverviewUseCaseMock as any,
     mocks.runBacktestUseCaseMock as any,
@@ -226,6 +229,38 @@ describe('BacktestingController', () => {
 
     await expect(
       controller.getCandleIngestionJobSymbolRuns('missing-ing-job'),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('cancelCandleIngestionJob delegates to use-case and returns status', async () => {
+    const { controller, mocks } = makeController({
+      cancelCandleIngestionJobUseCaseMock: {
+        execute: jest.fn().mockResolvedValue({
+          jobId: 'ing-1',
+          status: 'running',
+        }),
+      },
+    });
+
+    const result = await controller.cancelCandleIngestionJob('ing-1');
+    expect(
+      mocks.cancelCandleIngestionJobUseCaseMock.execute,
+    ).toHaveBeenCalledWith('ing-1');
+    expect(result).toEqual({
+      jobId: 'ing-1',
+      status: 'running',
+    });
+  });
+
+  it('cancelCandleIngestionJob throws NotFoundException when job missing', async () => {
+    const { controller } = makeController({
+      cancelCandleIngestionJobUseCaseMock: {
+        execute: jest.fn().mockResolvedValue(null),
+      },
+    });
+
+    await expect(
+      controller.cancelCandleIngestionJob('missing-ing-job'),
     ).rejects.toBeInstanceOf(NotFoundException);
   });
 

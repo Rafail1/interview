@@ -21,6 +21,7 @@ import { ImportBinanceDataUseCase } from 'src/backtesting/application/use-cases/
 import { StartCandleIngestionJobUseCase } from 'src/backtesting/application/use-cases/start-candle-ingestion-job.use-case';
 import { GetCandleIngestionJobStatusUseCase } from 'src/backtesting/application/use-cases/get-candle-ingestion-job-status.use-case';
 import { GetCandleIngestionJobSymbolRunsUseCase } from 'src/backtesting/application/use-cases/get-candle-ingestion-job-symbol-runs.use-case';
+import { CancelCandleIngestionJobUseCase } from 'src/backtesting/application/use-cases/cancel-candle-ingestion-job.use-case';
 import { GetBacktestRunUseCase } from 'src/backtesting/application/use-cases/get-backtest-run.use-case';
 import { CancelBacktestRunUseCase } from 'src/backtesting/application/use-cases/cancel-backtest-run.use-case';
 import { GetBacktestRunProgressUseCase } from 'src/backtesting/application/use-cases/get-backtest-run-progress.use-case';
@@ -40,6 +41,7 @@ import { BacktestRunSummaryResponseDto } from '../dtos/backtest-run-summary-resp
 import { BacktestRunSeriesQueryDto } from '../dtos/backtest-run-series-query.dto';
 import { BacktestRunSignalsResponseDto } from '../dtos/backtest-run-signals-response.dto';
 import { CancelBacktestRunResponseDto } from '../dtos/cancel-backtest-run-response.dto';
+import { CancelCandleIngestionJobResponseDto } from '../dtos/cancel-candle-ingestion-job-response.dto';
 import { CandleIngestionJobStatusResponseDto } from '../dtos/candle-ingestion-job-status-response.dto';
 import { CandleIngestionJobSymbolRunsResponseDto } from '../dtos/candle-ingestion-job-symbol-runs-response.dto';
 import { ImportBinanceDataRequestDto } from '../dtos/import-binance-data-request.dto';
@@ -62,6 +64,7 @@ export class BacktestingController {
     private readonly startCandleIngestionJobUseCase: StartCandleIngestionJobUseCase,
     private readonly getCandleIngestionJobStatusUseCase: GetCandleIngestionJobStatusUseCase,
     private readonly getCandleIngestionJobSymbolRunsUseCase: GetCandleIngestionJobSymbolRunsUseCase,
+    private readonly cancelCandleIngestionJobUseCase: CancelCandleIngestionJobUseCase,
     private readonly getImportJobStatusUseCase: GetImportJobStatusUseCase,
     private readonly getImportQueueOverviewUseCase: GetImportQueueOverviewUseCase,
     private readonly runBacktestUseCase: RunBacktestUseCase,
@@ -148,6 +151,20 @@ export class BacktestingController {
       jobId,
       runs,
     };
+  }
+
+  @Post('ingestion/jobs/:jobId/cancel')
+  @ApiOperation({ summary: 'Request cancellation of a running ingestion job' })
+  @ApiOkResponse({ type: CancelCandleIngestionJobResponseDto })
+  @ApiNotFoundResponse({ description: 'Candle ingestion job not found' })
+  public async cancelCandleIngestionJob(
+    @Param('jobId') jobId: string,
+  ): Promise<CancelCandleIngestionJobResponseDto> {
+    const result = await this.cancelCandleIngestionJobUseCase.execute(jobId);
+    if (!result) {
+      throw new NotFoundException(`Candle ingestion job not found: ${jobId}`);
+    }
+    return result;
   }
 
   @Post('run')
