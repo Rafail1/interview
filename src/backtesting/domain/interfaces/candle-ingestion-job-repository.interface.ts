@@ -56,6 +56,45 @@ export type CandleIngestionSymbolRunView = {
   completedAt: Date | null;
 };
 
+export type ListCandleIngestionJobsInput = {
+  sortBy: 'createdAt' | 'updatedAt';
+  sortOrder: 'asc' | 'desc';
+  status?: CandleIngestionJobStatus;
+  mode?: CandleIngestionMode;
+  interval?: string;
+  fromDate?: Date;
+  toDate?: Date;
+  page: number;
+  limit: number;
+};
+
+export type CandleIngestionJobListItemView = {
+  id: string;
+  mode: CandleIngestionMode;
+  status: CandleIngestionJobStatus;
+  errorMessage: string | null;
+  interval: string;
+  backfillCandles: number;
+  symbolsTotal: number;
+  symbolsCompleted: number;
+  symbolsFailed: number;
+  symbolsSkipped: number;
+  configHash: string;
+  freshnessTargetMs: string | null;
+  cancelRequestedAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+  startedAt: Date | null;
+  completedAt: Date | null;
+};
+
+export type CandleIngestionJobListView = {
+  items: CandleIngestionJobListItemView[];
+  page: number;
+  limit: number;
+  total: number;
+};
+
 export interface ICandleIngestionJobRepository {
   createJob(input: CreateCandleIngestionJobInput): Promise<CandleIngestionJobView>;
   findById(jobId: string): Promise<CandleIngestionJobView | null>;
@@ -89,6 +128,7 @@ export interface ICandleIngestionJobRepository {
       completedAt?: Date | null;
     },
   ): Promise<void>;
+  listJobs(input: ListCandleIngestionJobsInput): Promise<CandleIngestionJobListView>;
   findSymbolRunsByJobId(jobId: string): Promise<CandleIngestionSymbolRunView[] | null>;
 }
 

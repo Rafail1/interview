@@ -6,6 +6,7 @@ import { StartCandleIngestionJobUseCase } from './application/use-cases/start-ca
 import { GetCandleIngestionJobStatusUseCase } from './application/use-cases/get-candle-ingestion-job-status.use-case';
 import { GetCandleIngestionJobSymbolRunsUseCase } from './application/use-cases/get-candle-ingestion-job-symbol-runs.use-case';
 import { CancelCandleIngestionJobUseCase } from './application/use-cases/cancel-candle-ingestion-job.use-case';
+import { ListCandleIngestionJobsUseCase } from './application/use-cases/list-candle-ingestion-jobs.use-case';
 import { GetBacktestRunUseCase } from './application/use-cases/get-backtest-run.use-case';
 import { CancelBacktestRunUseCase } from './application/use-cases/cancel-backtest-run.use-case';
 import { GetBacktestRunProgressUseCase } from './application/use-cases/get-backtest-run-progress.use-case';
@@ -54,6 +55,7 @@ import { LOGGER_TOKEN } from 'src/core/interfaces/logger.interface';
     GetCandleIngestionJobStatusUseCase,
     GetCandleIngestionJobSymbolRunsUseCase,
     CancelCandleIngestionJobUseCase,
+    ListCandleIngestionJobsUseCase,
     GetImportJobStatusUseCase,
     GetImportQueueOverviewUseCase,
     GetBacktestRunUseCase,

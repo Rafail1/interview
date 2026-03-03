@@ -22,6 +22,7 @@ import { StartCandleIngestionJobUseCase } from 'src/backtesting/application/use-
 import { GetCandleIngestionJobStatusUseCase } from 'src/backtesting/application/use-cases/get-candle-ingestion-job-status.use-case';
 import { GetCandleIngestionJobSymbolRunsUseCase } from 'src/backtesting/application/use-cases/get-candle-ingestion-job-symbol-runs.use-case';
 import { CancelCandleIngestionJobUseCase } from 'src/backtesting/application/use-cases/cancel-candle-ingestion-job.use-case';
+import { ListCandleIngestionJobsUseCase } from 'src/backtesting/application/use-cases/list-candle-ingestion-jobs.use-case';
 import { GetBacktestRunUseCase } from 'src/backtesting/application/use-cases/get-backtest-run.use-case';
 import { CancelBacktestRunUseCase } from 'src/backtesting/application/use-cases/cancel-backtest-run.use-case';
 import { GetBacktestRunProgressUseCase } from 'src/backtesting/application/use-cases/get-backtest-run-progress.use-case';
@@ -51,6 +52,8 @@ import { ImportQueueOverviewResponseDto } from '../dtos/import-queue-overview-re
 import { ListBacktestRunsQueryDto } from '../dtos/list-backtest-runs-query.dto';
 import { ListBacktestRunsResponseDto } from '../dtos/list-backtest-runs-response.dto';
 import { ListActiveBacktestRunsResponseDto } from '../dtos/list-active-backtest-runs-response.dto';
+import { ListCandleIngestionJobsQueryDto } from '../dtos/list-candle-ingestion-jobs-query.dto';
+import { ListCandleIngestionJobsResponseDto } from '../dtos/list-candle-ingestion-jobs-response.dto';
 import { RunBacktestRequestDto } from '../dtos/run-backtest-request.dto';
 import { RunBacktestResponseDto } from '../dtos/run-backtest-response.dto';
 import { StartCandleIngestionJobRequestDto } from '../dtos/start-candle-ingestion-job-request.dto';
@@ -65,6 +68,7 @@ export class BacktestingController {
     private readonly getCandleIngestionJobStatusUseCase: GetCandleIngestionJobStatusUseCase,
     private readonly getCandleIngestionJobSymbolRunsUseCase: GetCandleIngestionJobSymbolRunsUseCase,
     private readonly cancelCandleIngestionJobUseCase: CancelCandleIngestionJobUseCase,
+    private readonly listCandleIngestionJobsUseCase: ListCandleIngestionJobsUseCase,
     private readonly getImportJobStatusUseCase: GetImportJobStatusUseCase,
     private readonly getImportQueueOverviewUseCase: GetImportQueueOverviewUseCase,
     private readonly runBacktestUseCase: RunBacktestUseCase,
@@ -114,6 +118,22 @@ export class BacktestingController {
   ): Promise<StartCandleIngestionJobResponseDto> {
     try {
       return await this.startCandleIngestionJobUseCase.execute(body);
+    } catch (error) {
+      if (error instanceof Error && this.isClientInputError(error.message)) {
+        throw new BadRequestException(error.message);
+      }
+      throw error;
+    }
+  }
+
+  @Get('ingestion/jobs')
+  @ApiOperation({ summary: 'List candle ingestion jobs' })
+  @ApiOkResponse({ type: ListCandleIngestionJobsResponseDto })
+  public async listCandleIngestionJobs(
+    @Query() query: ListCandleIngestionJobsQueryDto,
+  ): Promise<ListCandleIngestionJobsResponseDto> {
+    try {
+      return await this.listCandleIngestionJobsUseCase.execute(query);
     } catch (error) {
       if (error instanceof Error && this.isClientInputError(error.message)) {
         throw new BadRequestException(error.message);

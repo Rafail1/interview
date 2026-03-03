@@ -8,6 +8,7 @@ type UseCaseMocks = {
   getCandleIngestionJobStatusUseCaseMock: { execute: jest.Mock };
   getCandleIngestionJobSymbolRunsUseCaseMock: { execute: jest.Mock };
   cancelCandleIngestionJobUseCaseMock: { execute: jest.Mock };
+  listCandleIngestionJobsUseCaseMock: { execute: jest.Mock };
   getStatusUseCaseMock: { execute: jest.Mock };
   getQueueOverviewUseCaseMock: { execute: jest.Mock };
   runBacktestUseCaseMock: { execute: jest.Mock };
@@ -29,6 +30,7 @@ function makeController(overrides?: Partial<UseCaseMocks>) {
     getCandleIngestionJobStatusUseCaseMock: { execute: jest.fn() },
     getCandleIngestionJobSymbolRunsUseCaseMock: { execute: jest.fn() },
     cancelCandleIngestionJobUseCaseMock: { execute: jest.fn() },
+    listCandleIngestionJobsUseCaseMock: { execute: jest.fn() },
     getStatusUseCaseMock: { execute: jest.fn() },
     getQueueOverviewUseCaseMock: { execute: jest.fn() },
     runBacktestUseCaseMock: { execute: jest.fn() },
@@ -50,6 +52,7 @@ function makeController(overrides?: Partial<UseCaseMocks>) {
     mocks.getCandleIngestionJobStatusUseCaseMock as any,
     mocks.getCandleIngestionJobSymbolRunsUseCaseMock as any,
     mocks.cancelCandleIngestionJobUseCaseMock as any,
+    mocks.listCandleIngestionJobsUseCaseMock as any,
     mocks.getStatusUseCaseMock as any,
     mocks.getQueueOverviewUseCaseMock as any,
     mocks.runBacktestUseCaseMock as any,
@@ -137,6 +140,48 @@ describe('BacktestingController', () => {
       status: 'pending',
       configHash: 'abc123',
     });
+  });
+
+  it('listCandleIngestionJobs delegates and returns paged jobs', async () => {
+    const { controller, mocks } = makeController({
+      listCandleIngestionJobsUseCaseMock: {
+        execute: jest.fn().mockResolvedValue({
+          items: [
+            {
+              id: 'ing-1',
+              mode: 'incremental',
+              status: 'running',
+              errorMessage: null,
+              interval: '4h',
+              backfillCandles: 1000,
+              symbolsTotal: 500,
+              symbolsCompleted: 120,
+              symbolsFailed: 1,
+              symbolsSkipped: 10,
+              configHash: 'hash1',
+              freshnessTargetMs: null,
+              cancelRequestedAt: null,
+              startedAt: new Date('2026-03-03T00:00:00.000Z'),
+              completedAt: null,
+              createdAt: new Date('2026-03-03T00:00:00.000Z'),
+              updatedAt: new Date('2026-03-03T00:10:00.000Z'),
+            },
+          ],
+          page: 1,
+          limit: 20,
+          total: 1,
+        }),
+      },
+    });
+
+    const query = { status: 'running' as const, page: 1, limit: 20 };
+    const result = await controller.listCandleIngestionJobs(query);
+
+    expect(mocks.listCandleIngestionJobsUseCaseMock.execute).toHaveBeenCalledWith(
+      query,
+    );
+    expect(result.total).toBe(1);
+    expect(result.items[0]).toHaveProperty('id', 'ing-1');
   });
 
   it('getCandleIngestionJobStatus returns job when found', async () => {
@@ -495,6 +540,25 @@ describe('BacktestingController', () => {
     await expect(controller.getBacktestRunProgress('missing-run')).rejects.toBeInstanceOf(
       NotFoundException,
     );
+  });
+
+  it('listCandleIngestionJobs maps semantic validation errors to BadRequestException', async () => {
+    const { controller } = makeController({
+      listCandleIngestionJobsUseCaseMock: {
+        execute: jest
+          .fn()
+          .mockRejectedValue(
+            new Error('fromDate must be before or equal to toDate'),
+          ),
+      },
+    });
+
+    await expect(
+      controller.listCandleIngestionJobs({
+        fromDate: '2026-03-03T00:00:00.000Z',
+        toDate: '2026-03-01T00:00:00.000Z',
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it('cancelBacktestRun delegates to use-case and returns status', async () => {

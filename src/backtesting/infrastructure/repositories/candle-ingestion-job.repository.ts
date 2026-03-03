@@ -1,9 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import {
+  CandleIngestionJobListView,
   CandleIngestionJobView,
   CandleIngestionSymbolRunView,
   CreateCandleIngestionJobInput,
   ICandleIngestionJobRepository,
+  ListCandleIngestionJobsInput,
 } from 'src/backtesting/domain/interfaces/candle-ingestion-job-repository.interface';
 import { PrismaService } from 'src/core/infrastructure/prisma.service';
 
@@ -249,6 +251,44 @@ export class CandleIngestionJobRepository implements ICandleIngestionJobReposito
       startedAt: row.startedAt,
       completedAt: row.completedAt,
     }));
+  }
+
+  public async listJobs(
+    input: ListCandleIngestionJobsInput,
+  ): Promise<CandleIngestionJobListView> {
+    const prisma = this.prisma;
+    const where = {
+      ...(input.status ? { status: input.status } : {}),
+      ...(input.mode ? { mode: input.mode } : {}),
+      ...(input.interval ? { interval: input.interval } : {}),
+      ...(input.fromDate || input.toDate
+        ? {
+            createdAt: {
+              ...(input.fromDate ? { gte: input.fromDate } : {}),
+              ...(input.toDate ? { lte: input.toDate } : {}),
+            },
+          }
+        : {}),
+    };
+    const skip = (input.page - 1) * input.limit;
+    const [total, rows] = await prisma.$transaction([
+      prisma.candleIngestionJob.count({ where }),
+      prisma.candleIngestionJob.findMany({
+        where,
+        orderBy: {
+          [input.sortBy]: input.sortOrder,
+        },
+        skip,
+        take: input.limit,
+      }),
+    ]);
+
+    return {
+      items: rows.map((row) => this.toView(row)),
+      page: input.page,
+      limit: input.limit,
+      total,
+    };
   }
 
   private toView(job: any): CandleIngestionJobView {
