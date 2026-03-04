@@ -25,6 +25,9 @@ import { StartInPlayRunUseCase } from 'src/backtesting/application/use-cases/sta
 import { GetInPlayRunStatusUseCase } from 'src/backtesting/application/use-cases/get-in-play-run-status.use-case';
 import { ListInPlayRangesUseCase } from 'src/backtesting/application/use-cases/list-in-play-ranges.use-case';
 import { ListInPlayFvgZonesUseCase } from 'src/backtesting/application/use-cases/list-in-play-fvg-zones.use-case';
+import { GenerateInPlayEntryWindowsUseCase } from 'src/backtesting/application/use-cases/generate-in-play-entry-windows.use-case';
+import { ListInPlayEntryWindowsUseCase } from 'src/backtesting/application/use-cases/list-in-play-entry-windows.use-case';
+import { RunInPlayBacktestUseCase } from 'src/backtesting/application/use-cases/run-in-play-backtest.use-case';
 import { GetCandleIngestionJobStatusUseCase } from 'src/backtesting/application/use-cases/get-candle-ingestion-job-status.use-case';
 import { GetCandleIngestionJobDetailsUseCase } from 'src/backtesting/application/use-cases/get-candle-ingestion-job-details.use-case';
 import { GetCandleIngestionJobSymbolRunsUseCase } from 'src/backtesting/application/use-cases/get-candle-ingestion-job-symbol-runs.use-case';
@@ -76,6 +79,12 @@ import { ListInPlayRangesQueryDto } from '../dtos/list-in-play-ranges-query.dto'
 import { ListInPlayRangesResponseDto } from '../dtos/list-in-play-ranges-response.dto';
 import { ListInPlayFvgZonesQueryDto } from '../dtos/list-in-play-fvg-zones-query.dto';
 import { ListInPlayFvgZonesResponseDto } from '../dtos/list-in-play-fvg-zones-response.dto';
+import { GenerateInPlayEntryWindowsRequestDto } from '../dtos/generate-in-play-entry-windows-request.dto';
+import { GenerateInPlayEntryWindowsResponseDto } from '../dtos/generate-in-play-entry-windows-response.dto';
+import { ListInPlayEntryWindowsQueryDto } from '../dtos/list-in-play-entry-windows-query.dto';
+import { ListInPlayEntryWindowsResponseDto } from '../dtos/list-in-play-entry-windows-response.dto';
+import { RunInPlayBacktestRequestDto } from '../dtos/run-in-play-backtest-request.dto';
+import { RunInPlayBacktestResponseDto } from '../dtos/run-in-play-backtest-response.dto';
 
 @ApiTags('backtesting')
 @Controller('backtesting')
@@ -89,6 +98,9 @@ export class BacktestingController {
     private readonly getInPlayRunStatusUseCase: GetInPlayRunStatusUseCase,
     private readonly listInPlayRangesUseCase: ListInPlayRangesUseCase,
     private readonly listInPlayFvgZonesUseCase: ListInPlayFvgZonesUseCase,
+    private readonly generateInPlayEntryWindowsUseCase: GenerateInPlayEntryWindowsUseCase,
+    private readonly listInPlayEntryWindowsUseCase: ListInPlayEntryWindowsUseCase,
+    private readonly runInPlayBacktestUseCase: RunInPlayBacktestUseCase,
     private readonly getCandleIngestionJobStatusUseCase: GetCandleIngestionJobStatusUseCase,
     private readonly getCandleIngestionJobDetailsUseCase: GetCandleIngestionJobDetailsUseCase,
     private readonly getCandleIngestionJobSymbolRunsUseCase: GetCandleIngestionJobSymbolRunsUseCase,
@@ -216,6 +228,64 @@ export class BacktestingController {
       throw new NotFoundException(`In-play run not found: ${runId}`);
     }
     return response;
+  }
+
+  @Post('in-play/runs/:runId/entry-windows/generate')
+  @ApiOperation({
+    summary:
+      'Generate and persist 1m entry windows from mitigated 15m FVG zones in in-play ranges',
+  })
+  @ApiCreatedResponse({ type: GenerateInPlayEntryWindowsResponseDto })
+  @ApiNotFoundResponse({ description: 'In-play run not found' })
+  public async generateInPlayEntryWindows(
+    @Param('runId') runId: string,
+    @Body() body: GenerateInPlayEntryWindowsRequestDto,
+  ): Promise<GenerateInPlayEntryWindowsResponseDto> {
+    const response = await this.generateInPlayEntryWindowsUseCase.execute(
+      runId,
+      body,
+    );
+    if (!response) {
+      throw new NotFoundException(`In-play run not found: ${runId}`);
+    }
+    return response;
+  }
+
+  @Get('in-play/runs/:runId/entry-windows')
+  @ApiOperation({ summary: 'List persisted 1m entry windows for in-play run' })
+  @ApiOkResponse({ type: ListInPlayEntryWindowsResponseDto })
+  @ApiNotFoundResponse({ description: 'In-play run not found' })
+  public async listInPlayEntryWindows(
+    @Param('runId') runId: string,
+    @Query() query: ListInPlayEntryWindowsQueryDto,
+  ): Promise<ListInPlayEntryWindowsResponseDto> {
+    const response = await this.listInPlayEntryWindowsUseCase.execute(runId, query);
+    if (!response) {
+      throw new NotFoundException(`In-play run not found: ${runId}`);
+    }
+    return response;
+  }
+
+  @Post('in-play/runs/:runId/backtest')
+  @ApiOperation({ summary: 'Run lightweight backtest on persisted in-play entry windows' })
+  @ApiOkResponse({ type: RunInPlayBacktestResponseDto })
+  @ApiNotFoundResponse({ description: 'In-play run not found' })
+  public async runInPlayBacktest(
+    @Param('runId') runId: string,
+    @Body() body: RunInPlayBacktestRequestDto,
+  ): Promise<RunInPlayBacktestResponseDto> {
+    try {
+      const response = await this.runInPlayBacktestUseCase.execute(runId, body);
+      if (!response) {
+        throw new NotFoundException(`In-play run not found: ${runId}`);
+      }
+      return response;
+    } catch (error) {
+      if (error instanceof Error && this.isClientInputError(error.message)) {
+        throw new BadRequestException(error.message);
+      }
+      throw error;
+    }
   }
 
   @Get('ingestion/runner/status')

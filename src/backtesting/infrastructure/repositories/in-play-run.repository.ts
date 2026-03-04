@@ -2,9 +2,11 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import {
   CreateInPlayRunInput,
+  InPlayEntryWindowView,
   IInPlayRunRepository,
   InPlayRangeView,
   InPlayRunView,
+  SaveInPlayEntryWindowInput,
   SaveInPlayRangeInput,
 } from 'src/backtesting/domain/interfaces/in-play-run-repository.interface';
 import { PrismaService } from 'src/core/infrastructure/prisma.service';
@@ -166,6 +168,86 @@ export class InPlayRunRepository implements IInPlayRunRepository {
     }));
   }
 
+  public async replaceEntryWindows(
+    runId: string,
+    windows: SaveInPlayEntryWindowInput[],
+    symbol?: string,
+  ): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      await tx.inPlayEntryWindow.deleteMany({
+        where: {
+          runId,
+          ...(symbol ? { symbol } : {}),
+        },
+      });
+
+      if (windows.length === 0) {
+        return;
+      }
+
+      await tx.inPlayEntryWindow.createMany({
+        data: windows.map((window) => ({
+          runId,
+          rangeId: window.rangeId,
+          symbol: window.symbol,
+          interval: window.interval,
+          zoneId: window.zoneId,
+          zoneDirection: window.zoneDirection,
+          zoneLowerBound: window.zoneLowerBound,
+          zoneUpperBound: window.zoneUpperBound,
+          zoneStartTime: window.zoneStartTime,
+          mitigatedCandleOpenTime: window.mitigatedCandleOpenTime,
+          mitigatedCandleCloseTime: window.mitigatedCandleCloseTime,
+          outsideCandleCloseTime: window.outsideCandleCloseTime,
+          fromTime: window.fromTime,
+          toTime: window.toTime,
+          description: window.description,
+        })),
+      });
+    });
+  }
+
+  public async listEntryWindows(
+    runId: string,
+    symbol?: string,
+  ): Promise<InPlayEntryWindowView[] | null> {
+    const run = await this.prisma.inPlayRun.findUnique({
+      where: { id: runId },
+      select: { id: true },
+    });
+    if (!run) {
+      return null;
+    }
+
+    const rows = await this.prisma.inPlayEntryWindow.findMany({
+      where: {
+        runId,
+        ...(symbol ? { symbol } : {}),
+      },
+      orderBy: [{ symbol: 'asc' }, { fromTime: 'asc' }],
+    });
+
+    return rows.map((row) => ({
+      id: row.id,
+      runId: row.runId,
+      rangeId: row.rangeId,
+      symbol: row.symbol,
+      interval: row.interval,
+      zoneId: row.zoneId,
+      zoneDirection: this.toZoneDirection(row.zoneDirection),
+      zoneLowerBound: row.zoneLowerBound,
+      zoneUpperBound: row.zoneUpperBound,
+      zoneStartTime: row.zoneStartTime.toString(),
+      mitigatedCandleOpenTime: row.mitigatedCandleOpenTime.toString(),
+      mitigatedCandleCloseTime: row.mitigatedCandleCloseTime.toString(),
+      outsideCandleCloseTime: row.outsideCandleCloseTime.toString(),
+      fromTime: row.fromTime.toString(),
+      toTime: row.toTime.toString(),
+      description: row.description,
+      createdAt: row.createdAt,
+    }));
+  }
+
   private toRunView(row: any): InPlayRunView {
     return {
       id: row.id,
@@ -196,5 +278,9 @@ export class InPlayRunRepository implements IInPlayRunRepository {
       return value;
     }
     return 'both';
+  }
+
+  private toZoneDirection(value: string): 'bullish' | 'bearish' {
+    return value === 'bearish' ? 'bearish' : 'bullish';
   }
 }

@@ -72,8 +72,10 @@ export {
   type InPlayRunStatus,
   type InPlayRunView,
   type InPlayRangeView,
+  type InPlayEntryWindowView,
   type CreateInPlayRunInput,
   type SaveInPlayRangeInput,
+  type SaveInPlayEntryWindowInput,
   IN_PLAY_RUN_REPOSITORY_TOKEN,
 } from './in-play-run-repository.interface';
 export {

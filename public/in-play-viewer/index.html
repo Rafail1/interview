@@ -22,8 +22,24 @@
 
         <label for="symbol">Symbol</label>
         <input id="symbol" type="text" placeholder="BTCUSDT" />
+        <label for="initialBalance">Initial Balance</label>
+        <input id="initialBalance" type="number" min="1" step="1" value="10000" />
+        <label for="riskPercent">Risk %</label>
+        <input id="riskPercent" type="number" min="0.0001" step="0.1" value="2" />
+        <label for="rewardRatio">Reward Ratio</label>
+        <input id="rewardRatio" type="number" min="0.0001" step="0.1" value="2" />
+        <label for="minFvgSizePercent">Min FVG %</label>
+        <input id="minFvgSizePercent" type="number" min="0" step="0.1" value="0.8" />
+        <label for="maxFvgSizePercent">Max FVG %</label>
+        <input id="maxFvgSizePercent" type="number" min="0" step="0.1" value="4" />
 
         <button id="loadBtn" type="button">Load In-Play</button>
+        <button id="generateWindowsBtn" type="button">Generate Entry Windows</button>
+        <button id="runBacktestBtn" type="button">Run In-Play Backtest</button>
+        <label for="showEntryBands">Show Entry Bands</label>
+        <input id="showEntryBands" type="checkbox" checked />
+        <label for="showEntryMarkers">Show Entry Markers</label>
+        <input id="showEntryMarkers" type="checkbox" checked />
       </section>
 
       <section class="stats" id="stats"></section>
@@ -40,6 +56,16 @@
       <section class="ranges-wrap">
         <h2>FVG Zones</h2>
         <div id="zones"></div>
+      </section>
+
+      <section class="ranges-wrap">
+        <h2>Entry Windows</h2>
+        <div id="entryWindows"></div>
+      </section>
+
+      <section class="ranges-wrap">
+        <h2>In-Play Backtest</h2>
+        <div id="backtestResult"><p>No backtest executed yet.</p></div>
       </section>
     </main>
 

@@ -61,6 +61,43 @@ export type InPlayRangeView = {
   createdAt: Date;
 };
 
+export type SaveInPlayEntryWindowInput = {
+  rangeId: string;
+  symbol: string;
+  interval: string;
+  zoneId: string;
+  zoneDirection: 'bullish' | 'bearish';
+  zoneLowerBound: string;
+  zoneUpperBound: string;
+  zoneStartTime: bigint;
+  mitigatedCandleOpenTime: bigint;
+  mitigatedCandleCloseTime: bigint;
+  outsideCandleCloseTime: bigint;
+  fromTime: bigint;
+  toTime: bigint;
+  description: string;
+};
+
+export type InPlayEntryWindowView = {
+  id: string;
+  runId: string;
+  rangeId: string;
+  symbol: string;
+  interval: string;
+  zoneId: string;
+  zoneDirection: 'bullish' | 'bearish';
+  zoneLowerBound: string;
+  zoneUpperBound: string;
+  zoneStartTime: string;
+  mitigatedCandleOpenTime: string;
+  mitigatedCandleCloseTime: string;
+  outsideCandleCloseTime: string;
+  fromTime: string;
+  toTime: string;
+  description: string;
+  createdAt: Date;
+};
+
 export interface IInPlayRunRepository {
   createRun(input: CreateInPlayRunInput): Promise<InPlayRunView>;
   findRunById(runId: string): Promise<InPlayRunView | null>;
@@ -72,6 +109,15 @@ export interface IInPlayRunRepository {
   incrementProcessedSymbols(runId: string): Promise<void>;
   addRanges(runId: string, ranges: SaveInPlayRangeInput[]): Promise<void>;
   listRanges(runId: string, symbol?: string): Promise<InPlayRangeView[] | null>;
+  replaceEntryWindows(
+    runId: string,
+    windows: SaveInPlayEntryWindowInput[],
+    symbol?: string,
+  ): Promise<void>;
+  listEntryWindows(
+    runId: string,
+    symbol?: string,
+  ): Promise<InPlayEntryWindowView[] | null>;
 }
 
 export const IN_PLAY_RUN_REPOSITORY_TOKEN = Symbol('IInPlayRunRepository');

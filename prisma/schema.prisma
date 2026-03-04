@@ -233,6 +233,7 @@ model InPlayRun {
   startedAt             DateTime?
   completedAt           DateTime?
   ranges                InPlayRange[]
+  entryWindows          InPlayEntryWindow[]
 
   @@index([status, updatedAt])
   @@map("in_play_runs")
@@ -257,4 +258,29 @@ model InPlayRange {
   @@index([runId, symbol, startTime])
   @@index([symbol, interval, startTime, endTime])
   @@map("in_play_ranges")
+}
+
+model InPlayEntryWindow {
+  id                     String   @id @default(uuid())
+  run                    InPlayRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  runId                  String
+  rangeId                String
+  symbol                 String
+  interval               String
+  zoneId                 String
+  zoneDirection          String   // bullish | bearish
+  zoneLowerBound         String
+  zoneUpperBound         String
+  zoneStartTime          BigInt
+  mitigatedCandleOpenTime BigInt
+  mitigatedCandleCloseTime BigInt
+  outsideCandleCloseTime BigInt
+  fromTime               BigInt
+  toTime                 BigInt
+  description            String
+  createdAt              DateTime @default(now())
+
+  @@index([runId, symbol, fromTime])
+  @@index([symbol, interval, fromTime, toTime])
+  @@map("in_play_entry_windows")
 }

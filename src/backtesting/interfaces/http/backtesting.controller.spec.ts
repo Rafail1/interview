@@ -11,6 +11,9 @@ type UseCaseMocks = {
   getInPlayRunStatusUseCaseMock: { execute: jest.Mock };
   listInPlayRangesUseCaseMock: { execute: jest.Mock };
   listInPlayFvgZonesUseCaseMock: { execute: jest.Mock };
+  generateInPlayEntryWindowsUseCaseMock: { execute: jest.Mock };
+  listInPlayEntryWindowsUseCaseMock: { execute: jest.Mock };
+  runInPlayBacktestUseCaseMock: { execute: jest.Mock };
   getCandleIngestionJobStatusUseCaseMock: { execute: jest.Mock };
   getCandleIngestionJobDetailsUseCaseMock: { execute: jest.Mock };
   getCandleIngestionJobSymbolRunsUseCaseMock: { execute: jest.Mock };
@@ -40,6 +43,9 @@ function makeController(overrides?: Partial<UseCaseMocks>) {
     getInPlayRunStatusUseCaseMock: { execute: jest.fn() },
     listInPlayRangesUseCaseMock: { execute: jest.fn() },
     listInPlayFvgZonesUseCaseMock: { execute: jest.fn() },
+    generateInPlayEntryWindowsUseCaseMock: { execute: jest.fn() },
+    listInPlayEntryWindowsUseCaseMock: { execute: jest.fn() },
+    runInPlayBacktestUseCaseMock: { execute: jest.fn() },
     getCandleIngestionJobStatusUseCaseMock: { execute: jest.fn() },
     getCandleIngestionJobDetailsUseCaseMock: { execute: jest.fn() },
     getCandleIngestionJobSymbolRunsUseCaseMock: { execute: jest.fn() },
@@ -69,6 +75,9 @@ function makeController(overrides?: Partial<UseCaseMocks>) {
     mocks.getInPlayRunStatusUseCaseMock as any,
     mocks.listInPlayRangesUseCaseMock as any,
     mocks.listInPlayFvgZonesUseCaseMock as any,
+    mocks.generateInPlayEntryWindowsUseCaseMock as any,
+    mocks.listInPlayEntryWindowsUseCaseMock as any,
+    mocks.runInPlayBacktestUseCaseMock as any,
     mocks.getCandleIngestionJobStatusUseCaseMock as any,
     mocks.getCandleIngestionJobDetailsUseCaseMock as any,
     mocks.getCandleIngestionJobSymbolRunsUseCaseMock as any,
@@ -254,6 +263,131 @@ describe('BacktestingController', () => {
       { symbol: 'BTCUSDT' },
     );
     expect(result).toHaveProperty('items.0.symbol', 'BTCUSDT');
+  });
+
+  it('generateInPlayEntryWindows returns generated windows', async () => {
+    const { controller, mocks } = makeController({
+      generateInPlayEntryWindowsUseCaseMock: {
+        execute: jest.fn().mockResolvedValue({
+          runId: 'inplay-1',
+          generatedCount: 1,
+          items: [
+            {
+              id: 'ew-1',
+              runId: 'inplay-1',
+              rangeId: 'r-1',
+              symbol: 'BTCUSDT',
+              interval: '15m',
+              zoneId: 'z-1',
+              zoneDirection: 'bullish',
+              zoneLowerBound: '100',
+              zoneUpperBound: '101',
+              zoneStartTime: '1760000000000',
+              mitigatedCandleOpenTime: '1760000900000',
+              mitigatedCandleCloseTime: '1760001799999',
+              outsideCandleCloseTime: '1760002699999',
+              fromTime: '1760000000000',
+              toTime: '1760002699999',
+              description: 'window',
+              createdAt: new Date('2026-03-04T00:00:00.000Z'),
+            },
+          ],
+        }),
+      },
+    });
+
+    const result = await controller.generateInPlayEntryWindows('inplay-1', {
+      symbol: 'BTCUSDT',
+    });
+    expect(
+      mocks.generateInPlayEntryWindowsUseCaseMock.execute,
+    ).toHaveBeenCalledWith('inplay-1', { symbol: 'BTCUSDT' });
+    expect(result).toHaveProperty('generatedCount', 1);
+  });
+
+  it('listInPlayEntryWindows returns windows for existing run', async () => {
+    const { controller, mocks } = makeController({
+      listInPlayEntryWindowsUseCaseMock: {
+        execute: jest.fn().mockResolvedValue({
+          runId: 'inplay-1',
+          items: [
+            {
+              id: 'ew-1',
+              runId: 'inplay-1',
+              rangeId: 'r-1',
+              symbol: 'BTCUSDT',
+              interval: '15m',
+              zoneId: 'z-1',
+              zoneDirection: 'bullish',
+              zoneLowerBound: '100',
+              zoneUpperBound: '101',
+              zoneStartTime: '1760000000000',
+              mitigatedCandleOpenTime: '1760000900000',
+              mitigatedCandleCloseTime: '1760001799999',
+              outsideCandleCloseTime: '1760002699999',
+              fromTime: '1760000000000',
+              toTime: '1760002699999',
+              description: 'window',
+              createdAt: new Date('2026-03-04T00:00:00.000Z'),
+            },
+          ],
+        }),
+      },
+    });
+
+    const result = await controller.listInPlayEntryWindows('inplay-1', {
+      symbol: 'BTCUSDT',
+    });
+    expect(mocks.listInPlayEntryWindowsUseCaseMock.execute).toHaveBeenCalledWith(
+      'inplay-1',
+      { symbol: 'BTCUSDT' },
+    );
+    expect(result).toHaveProperty('items.0.id', 'ew-1');
+  });
+
+  it('runInPlayBacktest returns lightweight summary', async () => {
+    const { controller, mocks } = makeController({
+      runInPlayBacktestUseCaseMock: {
+        execute: jest.fn().mockResolvedValue({
+          runId: 'inplay-1',
+          status: 'completed',
+          symbolsProcessed: 1,
+          windows: 5,
+          mergedWindows: 3,
+          processedCandles: 1234,
+          generatedSignals: 42,
+          totalTrades: 7,
+          winningTrades: 4,
+          losingTrades: 3,
+          winRate: 57.14,
+          totalPnL: '123.45',
+          perSymbol: [],
+        }),
+      },
+    });
+
+    const result = await controller.runInPlayBacktest('inplay-1', {
+      symbol: 'BTCUSDT',
+    });
+
+    expect(mocks.runInPlayBacktestUseCaseMock.execute).toHaveBeenCalledWith(
+      'inplay-1',
+      { symbol: 'BTCUSDT' },
+    );
+    expect(result).toHaveProperty('status', 'completed');
+    expect(result).toHaveProperty('processedCandles', 1234);
+  });
+
+  it('runInPlayBacktest throws NotFoundException when run missing', async () => {
+    const { controller } = makeController({
+      runInPlayBacktestUseCaseMock: {
+        execute: jest.fn().mockResolvedValue(null),
+      },
+    });
+
+    await expect(
+      controller.runInPlayBacktest('missing-run', { symbol: 'BTCUSDT' }),
+    ).rejects.toBeInstanceOf(NotFoundException);
   });
 
   it('listCandleIngestionJobs delegates and returns paged jobs', async () => {
