@@ -67,3 +67,16 @@ export {
   type CandleIngestionRunnerStatusView,
   CANDLE_INGESTION_RUNNER_TOKEN,
 } from './candle-ingestion-runner.interface';
+export {
+  type IInPlayRunRepository,
+  type InPlayRunStatus,
+  type InPlayRunView,
+  type InPlayRangeView,
+  type CreateInPlayRunInput,
+  type SaveInPlayRangeInput,
+  IN_PLAY_RUN_REPOSITORY_TOKEN,
+} from './in-play-run-repository.interface';
+export {
+  type IInPlayRunner,
+  IN_PLAY_RUNNER_TOKEN,
+} from './in-play-runner.interface';

@@ -5,6 +5,9 @@ import { ImportBinanceDataUseCase } from './application/use-cases/import-binance
 import { StartCandleIngestionJobUseCase } from './application/use-cases/start-candle-ingestion-job.use-case';
 import { StartCandleIngestionRunnerUseCase } from './application/use-cases/start-candle-ingestion-runner.use-case';
 import { GetCandleIngestionRunnerStatusUseCase } from './application/use-cases/get-candle-ingestion-runner-status.use-case';
+import { StartInPlayRunUseCase } from './application/use-cases/start-in-play-run.use-case';
+import { GetInPlayRunStatusUseCase } from './application/use-cases/get-in-play-run-status.use-case';
+import { ListInPlayRangesUseCase } from './application/use-cases/list-in-play-ranges.use-case';
 import { GetCandleIngestionJobStatusUseCase } from './application/use-cases/get-candle-ingestion-job-status.use-case';
 import { GetCandleIngestionJobDetailsUseCase } from './application/use-cases/get-candle-ingestion-job-details.use-case';
 import { GetCandleIngestionJobSymbolRunsUseCase } from './application/use-cases/get-candle-ingestion-job-symbol-runs.use-case';
@@ -29,6 +32,8 @@ import { STRATEGY_EVALUATOR_TOKEN } from './domain/interfaces/strategy-evaluator
 import { STRUCTURE_DETECTOR_TOKEN } from './domain/interfaces/structure-detector.interface';
 import { TRADE_SIMULATOR_TOKEN } from './domain/interfaces/trade-simulator.interface';
 import { BACKTEST_RUN_REPOSITORY_TOKEN } from './domain/interfaces/backtest-run-repository.interface';
+import { IN_PLAY_RUN_REPOSITORY_TOKEN } from './domain/interfaces/in-play-run-repository.interface';
+import { IN_PLAY_RUNNER_TOKEN } from './domain/interfaces/in-play-runner.interface';
 import { BacktestingController } from './interfaces/http/backtesting.controller';
 import { BinanceDataDownloader } from './infrastructure/data-loaders/binance-data.downloader';
 import { MarketDataMapper } from './infrastructure/mappers/market-data.mapper';
@@ -40,7 +45,9 @@ import { TimeframeCacheService } from './infrastructure/market-data/timeframe-ca
 import { MarketDataRepository } from './infrastructure/repositories/market-data.repository';
 import { BacktestRunRepository } from './infrastructure/repositories/backtest-run.repository';
 import { CandleIngestionJobRepository } from './infrastructure/repositories/candle-ingestion-job.repository';
+import { InPlayRunRepository } from './infrastructure/repositories/in-play-run.repository';
 import { CandleIngestionRunnerService } from './infrastructure/ingestion/candle-ingestion-runner.service';
+import { InPlayRunnerService } from './infrastructure/in-play/in-play-runner.service';
 import { FvgDetector } from './infrastructure/signal-detection/fvg.detector';
 import { StrategyEvaluator } from './infrastructure/signal-detection/strategy.evaluator';
 import { StructureDetector } from './infrastructure/signal-detection/structure.detector';
@@ -57,6 +64,9 @@ import { LOGGER_TOKEN } from 'src/core/interfaces/logger.interface';
     StartCandleIngestionJobUseCase,
     StartCandleIngestionRunnerUseCase,
     GetCandleIngestionRunnerStatusUseCase,
+    StartInPlayRunUseCase,
+    GetInPlayRunStatusUseCase,
+    ListInPlayRangesUseCase,
     GetCandleIngestionJobStatusUseCase,
     GetCandleIngestionJobDetailsUseCase,
     GetCandleIngestionJobSymbolRunsUseCase,
@@ -82,6 +92,7 @@ import { LOGGER_TOKEN } from 'src/core/interfaces/logger.interface';
     DownloadJobRepository,
     DownloadManager,
     CandleIngestionRunnerService,
+    InPlayRunnerService,
     {
       provide: CANDLE_INGESTION_JOB_REPOSITORY_TOKEN,
       useClass: CandleIngestionJobRepository,
@@ -89,6 +100,14 @@ import { LOGGER_TOKEN } from 'src/core/interfaces/logger.interface';
     {
       provide: CANDLE_INGESTION_RUNNER_TOKEN,
       useExisting: CandleIngestionRunnerService,
+    },
+    {
+      provide: IN_PLAY_RUN_REPOSITORY_TOKEN,
+      useClass: InPlayRunRepository,
+    },
+    {
+      provide: IN_PLAY_RUNNER_TOKEN,
+      useExisting: InPlayRunnerService,
     },
     {
       provide: LOGGER_TOKEN,

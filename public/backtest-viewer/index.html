@@ -18,11 +18,16 @@
         <input id="apiBase" type="text" placeholder="http://localhost:3000" />
         <label for="runId">Run ID</label>
         <input id="runId" type="text" placeholder="paste run id" />
+        <label for="inPlayRunId">In-Play Run ID</label>
+        <input id="inPlayRunId" type="text" placeholder="paste in-play run id" />
+        <label for="inPlaySymbol">In-Play Symbol</label>
+        <input id="inPlaySymbol" type="text" placeholder="BTCUSDT" />
         <label class="checkbox">
           <input id="showZones" type="checkbox" checked />
           Show FVG zones
         </label>
         <button id="loadBtn" type="button">Load</button>
+        <button id="loadInPlayBtn" type="button">Load In-Play</button>
       </section>
 
       <section class="stats" id="stats"></section>
@@ -39,6 +44,11 @@
       <section class="zones-wrap">
         <h2>FVG Zones</h2>
         <div id="zones"></div>
+      </section>
+
+      <section class="zones-wrap">
+        <h2>In-Play Ranges</h2>
+        <div id="inPlayRanges"></div>
       </section>
     </main>
 

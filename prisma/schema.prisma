@@ -212,3 +212,47 @@ model CandleIngestionSymbolRun {
   @@index([symbol, interval, lastSyncedOpenTime])
   @@map("candle_ingestion_symbol_runs")
 }
+
+model InPlayRun {
+  id                    String   @id @default(uuid())
+  status                String   @default("pending") // pending | running | completed | failed
+  errorMessage          String?
+  interval              String   @default("15m")
+  startTime             BigInt
+  endTime               BigInt
+  symbols               Json?    // null => auto-detect symbols from market_data
+  windowSize            Int      @default(24)
+  quoteVolumeThreshold  String   // Decimal-like string
+  volatilityThreshold   String   // Percent as decimal-like string
+  totalSymbols          Int      @default(0)
+  processedSymbols      Int      @default(0)
+  rangesCount           Int      @default(0)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  startedAt             DateTime?
+  completedAt           DateTime?
+  ranges                InPlayRange[]
+
+  @@index([status, updatedAt])
+  @@map("in_play_runs")
+}
+
+model InPlayRange {
+  id                    String   @id @default(uuid())
+  run                   InPlayRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  runId                 String
+  symbol                String
+  interval              String
+  startTime             BigInt
+  endTime               BigInt
+  lowPrice              String
+  highPrice             String
+  activeWindows         Int      @default(0)
+  avgQuoteVolume        String
+  maxVolatilityPercent  String
+  createdAt             DateTime @default(now())
+
+  @@index([runId, symbol, startTime])
+  @@index([symbol, interval, startTime, endTime])
+  @@map("in_play_ranges")
+}

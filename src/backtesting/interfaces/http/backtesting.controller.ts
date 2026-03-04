@@ -21,6 +21,9 @@ import { ImportBinanceDataUseCase } from 'src/backtesting/application/use-cases/
 import { StartCandleIngestionJobUseCase } from 'src/backtesting/application/use-cases/start-candle-ingestion-job.use-case';
 import { StartCandleIngestionRunnerUseCase } from 'src/backtesting/application/use-cases/start-candle-ingestion-runner.use-case';
 import { GetCandleIngestionRunnerStatusUseCase } from 'src/backtesting/application/use-cases/get-candle-ingestion-runner-status.use-case';
+import { StartInPlayRunUseCase } from 'src/backtesting/application/use-cases/start-in-play-run.use-case';
+import { GetInPlayRunStatusUseCase } from 'src/backtesting/application/use-cases/get-in-play-run-status.use-case';
+import { ListInPlayRangesUseCase } from 'src/backtesting/application/use-cases/list-in-play-ranges.use-case';
 import { GetCandleIngestionJobStatusUseCase } from 'src/backtesting/application/use-cases/get-candle-ingestion-job-status.use-case';
 import { GetCandleIngestionJobDetailsUseCase } from 'src/backtesting/application/use-cases/get-candle-ingestion-job-details.use-case';
 import { GetCandleIngestionJobSymbolRunsUseCase } from 'src/backtesting/application/use-cases/get-candle-ingestion-job-symbol-runs.use-case';
@@ -65,6 +68,11 @@ import { StartCandleIngestionJobRequestDto } from '../dtos/start-candle-ingestio
 import { StartCandleIngestionJobResponseDto } from '../dtos/start-candle-ingestion-job-response.dto';
 import { StartCandleIngestionRunnerResponseDto } from '../dtos/start-candle-ingestion-runner-response.dto';
 import { CandleIngestionRunnerStatusResponseDto } from '../dtos/candle-ingestion-runner-status-response.dto';
+import { StartInPlayRunRequestDto } from '../dtos/start-in-play-run-request.dto';
+import { StartInPlayRunResponseDto } from '../dtos/start-in-play-run-response.dto';
+import { InPlayRunStatusResponseDto } from '../dtos/in-play-run-status-response.dto';
+import { ListInPlayRangesQueryDto } from '../dtos/list-in-play-ranges-query.dto';
+import { ListInPlayRangesResponseDto } from '../dtos/list-in-play-ranges-response.dto';
 
 @ApiTags('backtesting')
 @Controller('backtesting')
@@ -74,6 +82,9 @@ export class BacktestingController {
     private readonly startCandleIngestionJobUseCase: StartCandleIngestionJobUseCase,
     private readonly startCandleIngestionRunnerUseCase: StartCandleIngestionRunnerUseCase,
     private readonly getCandleIngestionRunnerStatusUseCase: GetCandleIngestionRunnerStatusUseCase,
+    private readonly startInPlayRunUseCase: StartInPlayRunUseCase,
+    private readonly getInPlayRunStatusUseCase: GetInPlayRunStatusUseCase,
+    private readonly listInPlayRangesUseCase: ListInPlayRangesUseCase,
     private readonly getCandleIngestionJobStatusUseCase: GetCandleIngestionJobStatusUseCase,
     private readonly getCandleIngestionJobDetailsUseCase: GetCandleIngestionJobDetailsUseCase,
     private readonly getCandleIngestionJobSymbolRunsUseCase: GetCandleIngestionJobSymbolRunsUseCase,
@@ -141,6 +152,51 @@ export class BacktestingController {
   @ApiOkResponse({ type: StartCandleIngestionRunnerResponseDto })
   public async startCandleIngestionRunner(): Promise<StartCandleIngestionRunnerResponseDto> {
     return this.startCandleIngestionRunnerUseCase.execute();
+  }
+
+  @Post('in-play/runs')
+  @ApiOperation({ summary: 'Start in-play range detection run' })
+  @ApiCreatedResponse({ type: StartInPlayRunResponseDto })
+  public async startInPlayRun(
+    @Body() body: StartInPlayRunRequestDto,
+  ): Promise<StartInPlayRunResponseDto> {
+    try {
+      return await this.startInPlayRunUseCase.execute(body);
+    } catch (error) {
+      if (error instanceof Error && this.isClientInputError(error.message)) {
+        throw new BadRequestException(error.message);
+      }
+      throw error;
+    }
+  }
+
+  @Get('in-play/runs/:runId')
+  @ApiOperation({ summary: 'Get in-play run status' })
+  @ApiOkResponse({ type: InPlayRunStatusResponseDto })
+  @ApiNotFoundResponse({ description: 'In-play run not found' })
+  public async getInPlayRunStatus(
+    @Param('runId') runId: string,
+  ): Promise<InPlayRunStatusResponseDto> {
+    const run = await this.getInPlayRunStatusUseCase.execute(runId);
+    if (!run) {
+      throw new NotFoundException(`In-play run not found: ${runId}`);
+    }
+    return run;
+  }
+
+  @Get('in-play/runs/:runId/ranges')
+  @ApiOperation({ summary: 'List detected in-play ranges' })
+  @ApiOkResponse({ type: ListInPlayRangesResponseDto })
+  @ApiNotFoundResponse({ description: 'In-play run not found' })
+  public async listInPlayRanges(
+    @Param('runId') runId: string,
+    @Query() query: ListInPlayRangesQueryDto,
+  ): Promise<ListInPlayRangesResponseDto> {
+    const response = await this.listInPlayRangesUseCase.execute(runId, query);
+    if (!response) {
+      throw new NotFoundException(`In-play run not found: ${runId}`);
+    }
+    return response;
   }
 
   @Get('ingestion/runner/status')
@@ -416,6 +472,9 @@ export class BacktestingController {
   private isClientInputError(message: string): boolean {
     return (
       message === 'startDate must be before or equal to endDate' ||
+      message === 'Invalid date range' ||
+      message === 'quoteVolumeThreshold must be non-negative' ||
+      message === 'volatilityThreshold must be non-negative' ||
       message === 'fromDate must be before or equal to toDate' ||
       message === 'fromTs must be before or equal to toTs' ||
       message === 'Date range cannot be in the future' ||

@@ -7,6 +7,9 @@ type UseCaseMocks = {
   startCandleIngestionJobUseCaseMock: { execute: jest.Mock };
   startCandleIngestionRunnerUseCaseMock: { execute: jest.Mock };
   getCandleIngestionRunnerStatusUseCaseMock: { execute: jest.Mock };
+  startInPlayRunUseCaseMock: { execute: jest.Mock };
+  getInPlayRunStatusUseCaseMock: { execute: jest.Mock };
+  listInPlayRangesUseCaseMock: { execute: jest.Mock };
   getCandleIngestionJobStatusUseCaseMock: { execute: jest.Mock };
   getCandleIngestionJobDetailsUseCaseMock: { execute: jest.Mock };
   getCandleIngestionJobSymbolRunsUseCaseMock: { execute: jest.Mock };
@@ -32,6 +35,9 @@ function makeController(overrides?: Partial<UseCaseMocks>) {
     startCandleIngestionJobUseCaseMock: { execute: jest.fn() },
     startCandleIngestionRunnerUseCaseMock: { execute: jest.fn() },
     getCandleIngestionRunnerStatusUseCaseMock: { execute: jest.fn() },
+    startInPlayRunUseCaseMock: { execute: jest.fn() },
+    getInPlayRunStatusUseCaseMock: { execute: jest.fn() },
+    listInPlayRangesUseCaseMock: { execute: jest.fn() },
     getCandleIngestionJobStatusUseCaseMock: { execute: jest.fn() },
     getCandleIngestionJobDetailsUseCaseMock: { execute: jest.fn() },
     getCandleIngestionJobSymbolRunsUseCaseMock: { execute: jest.fn() },
@@ -57,6 +63,9 @@ function makeController(overrides?: Partial<UseCaseMocks>) {
     mocks.startCandleIngestionJobUseCaseMock as any,
     mocks.startCandleIngestionRunnerUseCaseMock as any,
     mocks.getCandleIngestionRunnerStatusUseCaseMock as any,
+    mocks.startInPlayRunUseCaseMock as any,
+    mocks.getInPlayRunStatusUseCaseMock as any,
+    mocks.listInPlayRangesUseCaseMock as any,
     mocks.getCandleIngestionJobStatusUseCaseMock as any,
     mocks.getCandleIngestionJobDetailsUseCaseMock as any,
     mocks.getCandleIngestionJobSymbolRunsUseCaseMock as any,
@@ -191,6 +200,57 @@ describe('BacktestingController', () => {
       maxApiConcurrency: 8,
       apiInFlight: 2,
     });
+  });
+
+  it('startInPlayRun delegates and returns run envelope', async () => {
+    const { controller, mocks } = makeController({
+      startInPlayRunUseCaseMock: {
+        execute: jest.fn().mockResolvedValue({
+          runId: 'inplay-1',
+          status: 'pending',
+        }),
+      },
+    });
+
+    const result = await controller.startInPlayRun({
+      interval: '15m',
+      startDate: '2026-02-01T00:00:00.000Z',
+      endDate: '2026-02-28T23:59:59.999Z',
+    });
+
+    expect(mocks.startInPlayRunUseCaseMock.execute).toHaveBeenCalled();
+    expect(result).toEqual({
+      runId: 'inplay-1',
+      status: 'pending',
+    });
+  });
+
+  it('listInPlayRanges returns ranges for existing run', async () => {
+    const { controller, mocks } = makeController({
+      listInPlayRangesUseCaseMock: {
+        execute: jest.fn().mockResolvedValue({
+          runId: 'inplay-1',
+          items: [
+            {
+              id: 'range-1',
+              symbol: 'BTCUSDT',
+              interval: '15m',
+              startTime: '1760000000000',
+              endTime: '1760003600000',
+            },
+          ],
+        }),
+      },
+    });
+
+    const result = await controller.listInPlayRanges('inplay-1', {
+      symbol: 'BTCUSDT',
+    });
+    expect(mocks.listInPlayRangesUseCaseMock.execute).toHaveBeenCalledWith(
+      'inplay-1',
+      { symbol: 'BTCUSDT' },
+    );
+    expect(result).toHaveProperty('items.0.symbol', 'BTCUSDT');
   });
 
   it('listCandleIngestionJobs delegates and returns paged jobs', async () => {

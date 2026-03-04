@@ -1,17 +1,25 @@
 (function () {
   const apiInput = document.getElementById("apiBase");
   const runInput = document.getElementById("runId");
+  const inPlayRunInput = document.getElementById("inPlayRunId");
+  const inPlaySymbolInput = document.getElementById("inPlaySymbol");
   const loadBtn = document.getElementById("loadBtn");
+  const loadInPlayBtn = document.getElementById("loadInPlayBtn");
   const showZonesInput = document.getElementById("showZones");
   const statsEl = document.getElementById("stats");
   const tradesEl = document.getElementById("trades");
   const zonesEl = document.getElementById("zones");
+  const inPlayRangesEl = document.getElementById("inPlayRanges");
   const chartHost = document.getElementById("chart");
 
   const savedApi = localStorage.getItem("bt_viewer_api");
   const savedRunId = localStorage.getItem("bt_viewer_runid");
+  const savedInPlayRunId = localStorage.getItem("bt_viewer_inplay_runid");
+  const savedInPlaySymbol = localStorage.getItem("bt_viewer_inplay_symbol");
   apiInput.value = savedApi || window.location.origin;
   runInput.value = savedRunId || "";
+  inPlayRunInput.value = savedInPlayRunId || "";
+  inPlaySymbolInput.value = savedInPlaySymbol || "";
 
   const chart = LightweightCharts.createChart(chartHost, {
     autoSize: true,
@@ -46,6 +54,7 @@
   const maxCandlesToRender = 8000;
   const maxZonesToRender = 120;
   const zoneSeries = [];
+  const inPlaySeries = [];
   let currentRun = null;
   let currentZones = [];
 
@@ -237,6 +246,85 @@
     }
   }
 
+  function renderInPlayRangesTable(ranges) {
+    if (!ranges.length) {
+      inPlayRangesEl.innerHTML = "<p>No in-play ranges returned.</p>";
+      return;
+    }
+    const rows = ranges
+      .map((range) => {
+        return `
+          <tr>
+            <td>${escapeHtml(range.symbol)}</td>
+            <td>${new Date(Number(range.startTime)).toISOString()}</td>
+            <td>${new Date(Number(range.endTime)).toISOString()}</td>
+            <td>${escapeHtml(range.lowPrice)}</td>
+            <td>${escapeHtml(range.highPrice)}</td>
+            <td>${escapeHtml(range.activeWindows)}</td>
+            <td>${escapeHtml(range.avgQuoteVolume)}</td>
+            <td>${escapeHtml(range.maxVolatilityPercent)}</td>
+          </tr>
+        `;
+      })
+      .join("");
+    inPlayRangesEl.innerHTML = `
+      <table>
+        <thead>
+          <tr>
+            <th>Symbol</th>
+            <th>Start</th>
+            <th>End</th>
+            <th>Low</th>
+            <th>High</th>
+            <th>Active Windows</th>
+            <th>Avg Quote Vol</th>
+            <th>Max Volatility %</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    `;
+  }
+
+  function renderInPlayOverlays(interval, ranges) {
+    while (inPlaySeries.length > 0) {
+      const series = inPlaySeries.pop();
+      chart.removeSeries(series);
+    }
+    for (const range of ranges) {
+      const startSec = toBarOpenSeconds(range.startTime, interval);
+      const endSec = toBarOpenSeconds(range.endTime, interval);
+      const color = "#2a65d9";
+      const topSeries = chart.addLineSeries({
+        color,
+        lineWidth: 1,
+        lineStyle: LightweightCharts.LineStyle.Dotted,
+        crosshairMarkerVisible: false,
+        lastValueVisible: false,
+        priceLineVisible: false,
+      });
+      topSeries.setData([
+        { time: startSec, value: Number(range.highPrice) },
+        { time: endSec, value: Number(range.highPrice) },
+      ]);
+      inPlaySeries.push(topSeries);
+
+      const lowSeries = chart.addLineSeries({
+        color,
+        lineWidth: 1,
+        lineStyle: LightweightCharts.LineStyle.Dotted,
+        crosshairMarkerVisible: false,
+        lastValueVisible: false,
+        priceLineVisible: false,
+      });
+      lowSeries.setData([
+        { time: startSec, value: Number(range.lowPrice) },
+        { time: endSec, value: Number(range.lowPrice) },
+      ]);
+      inPlaySeries.push(lowSeries);
+    }
+  }
+
   async function fetchRun(apiBase, runId) {
     const response = await fetch(`${apiBase}/backtesting/run/${runId}`);
     if (!response.ok) {
@@ -249,6 +337,18 @@
     const response = await fetch(`${apiBase}/backtesting/run/${runId}/fvg-zones`);
     if (!response.ok) {
       throw new Error(`FVG zones request failed: HTTP ${response.status}`);
+    }
+    return response.json();
+  }
+
+  async function fetchInPlayRanges(apiBase, runId, symbol) {
+    const url = new URL(`${apiBase}/backtesting/in-play/runs/${runId}/ranges`);
+    if (symbol) {
+      url.searchParams.set("symbol", symbol);
+    }
+    const response = await fetch(url.toString());
+    if (!response.ok) {
+      throw new Error(`In-play ranges request failed: HTTP ${response.status}`);
     }
     return response.json();
   }
@@ -378,10 +478,78 @@
     }
   }
 
+  async function loadInPlay() {
+    const apiBase = apiInput.value.trim().replace(/\/+$/, "");
+    const runId = inPlayRunInput.value.trim();
+    const symbol = inPlaySymbolInput.value.trim().toUpperCase();
+    if (!apiBase || !runId || !symbol) {
+      alert("Please provide API base, In-Play run id and symbol");
+      return;
+    }
+
+    loadInPlayBtn.disabled = true;
+    loadInPlayBtn.textContent = "Loading...";
+    localStorage.setItem("bt_viewer_api", apiBase);
+    localStorage.setItem("bt_viewer_inplay_runid", runId);
+    localStorage.setItem("bt_viewer_inplay_symbol", symbol);
+
+    try {
+      const rangesResponse = await fetchInPlayRanges(apiBase, runId, symbol);
+      const ranges = Array.isArray(rangesResponse.items)
+        ? rangesResponse.items
+        : [];
+      if (!ranges.length) {
+        renderInPlayRangesTable([]);
+        renderInPlayOverlays("15m", []);
+        return;
+      }
+
+      const interval = ranges[0].interval || "15m";
+      const startMs = Math.min(...ranges.map((range) => Number(range.startTime)));
+      const endMs = Math.max(...ranges.map((range) => Number(range.endTime)));
+      const candles = await fetchKlines(symbol, interval, startMs, endMs);
+
+      candlesSeries.setData(candles);
+      candlesSeries.setMarkers([]);
+      while (zoneSeries.length > 0) {
+        const series = zoneSeries.pop();
+        chart.removeSeries(series);
+      }
+      renderInPlayOverlays(interval, ranges);
+      renderInPlayRangesTable(ranges);
+      chart.timeScale().fitContent();
+      statsEl.innerHTML = `
+        <article class="stat"><div class="k">Mode</div><div class="v">In-Play</div></article>
+        <article class="stat"><div class="k">Symbol</div><div class="v">${escapeHtml(symbol)}</div></article>
+        <article class="stat"><div class="k">Interval</div><div class="v">${escapeHtml(interval)}</div></article>
+        <article class="stat"><div class="k">Ranges</div><div class="v">${escapeHtml(ranges.length)}</div></article>
+      `;
+      tradesEl.innerHTML = "<p>Trades are not loaded in In-Play mode.</p>";
+      zonesEl.innerHTML = "<p>FVG zones are not loaded in In-Play mode.</p>";
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      alert(message);
+    } finally {
+      loadInPlayBtn.disabled = false;
+      loadInPlayBtn.textContent = "Load In-Play";
+    }
+  }
+
   loadBtn.addEventListener("click", load);
+  loadInPlayBtn.addEventListener("click", loadInPlay);
   runInput.addEventListener("keydown", (event) => {
     if (event.key === "Enter") {
       void load();
+    }
+  });
+  inPlayRunInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      void loadInPlay();
+    }
+  });
+  inPlaySymbolInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      void loadInPlay();
     }
   });
 
