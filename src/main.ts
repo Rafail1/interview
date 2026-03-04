@@ -34,6 +34,12 @@ async function bootstrap() {
     decorateReply: false,
   });
 
+  await app.register(fastifyStatic, {
+    root: join(process.cwd(), 'public', 'in-play-viewer'),
+    prefix: '/in-play-viewer/',
+    decorateReply: false,
+  });
+
   const config = new DocumentBuilder()
     .setTitle('Boilerplate API')
     .setDescription('Boilerplate API documentation')

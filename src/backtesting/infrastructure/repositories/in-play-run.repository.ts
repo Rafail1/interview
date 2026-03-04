@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import {
   CreateInPlayRunInput,
   IInPlayRunRepository,
@@ -18,7 +19,8 @@ export class InPlayRunRepository implements IInPlayRunRepository {
         interval: input.interval,
         startTime: input.startTime,
         endTime: input.endTime,
-        symbols: input.symbols ?? null,
+        symbols: input.symbols ?? Prisma.JsonNull,
+        activationMode: input.activationMode,
         windowSize: input.windowSize,
         quoteVolumeThreshold: input.quoteVolumeThreshold,
         volatilityThreshold: input.volatilityThreshold,
@@ -117,6 +119,7 @@ export class InPlayRunRepository implements IInPlayRunRepository {
           activeWindows: range.activeWindows,
           avgQuoteVolume: range.avgQuoteVolume,
           maxVolatilityPercent: range.maxVolatilityPercent,
+          activationReason: range.activationReason,
         })),
       }),
       this.prisma.inPlayRun.update({
@@ -158,6 +161,7 @@ export class InPlayRunRepository implements IInPlayRunRepository {
       activeWindows: row.activeWindows,
       avgQuoteVolume: row.avgQuoteVolume,
       maxVolatilityPercent: row.maxVolatilityPercent,
+      activationReason: this.toActivationReason(row.activationReason),
       createdAt: row.createdAt,
     }));
   }
@@ -171,6 +175,7 @@ export class InPlayRunRepository implements IInPlayRunRepository {
       startTime: row.startTime.toString(),
       endTime: row.endTime.toString(),
       symbols: Array.isArray(row.symbols) ? row.symbols : null,
+      activationMode: row.activationMode,
       windowSize: row.windowSize,
       quoteVolumeThreshold: row.quoteVolumeThreshold,
       volatilityThreshold: row.volatilityThreshold,
@@ -182,5 +187,14 @@ export class InPlayRunRepository implements IInPlayRunRepository {
       startedAt: row.startedAt,
       completedAt: row.completedAt,
     };
+  }
+
+  private toActivationReason(
+    value: string,
+  ): 'both' | 'volume_only' | 'volatility_only' {
+    if (value === 'volume_only' || value === 'volatility_only') {
+      return value;
+    }
+    return 'both';
   }
 }

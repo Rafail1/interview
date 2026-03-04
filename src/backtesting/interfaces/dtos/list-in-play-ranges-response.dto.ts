@@ -34,6 +34,9 @@ class InPlayRangeDto {
   @ApiProperty()
   readonly maxVolatilityPercent: string;
 
+  @ApiProperty({ enum: ['both', 'volume_only', 'volatility_only'] })
+  readonly activationReason: 'both' | 'volume_only' | 'volatility_only';
+
   @ApiProperty()
   readonly createdAt: Date;
 }

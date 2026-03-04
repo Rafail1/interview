@@ -221,6 +221,7 @@ model InPlayRun {
   startTime             BigInt
   endTime               BigInt
   symbols               Json?    // null => auto-detect symbols from market_data
+  activationMode        String   @default("both") // both | either
   windowSize            Int      @default(24)
   quoteVolumeThreshold  String   // Decimal-like string
   volatilityThreshold   String   // Percent as decimal-like string
@@ -250,6 +251,7 @@ model InPlayRange {
   activeWindows         Int      @default(0)
   avgQuoteVolume        String
   maxVolatilityPercent  String
+  activationReason      String   // both | volume_only | volatility_only
   createdAt             DateTime @default(now())
 
   @@index([runId, symbol, startTime])

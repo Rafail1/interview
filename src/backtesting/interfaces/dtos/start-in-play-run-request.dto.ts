@@ -3,6 +3,7 @@ import {
   ArrayUnique,
   IsArray,
   IsDateString,
+  IsIn,
   IsInt,
   IsOptional,
   IsString,
@@ -38,6 +39,16 @@ export class StartInPlayRunRequestDto {
   @IsInt()
   @Min(2)
   readonly windowSize?: number;
+
+  @ApiPropertyOptional({
+    enum: ['both', 'either'],
+    default: 'both',
+    description:
+      'both: require volume and volatility thresholds. either: require any threshold.',
+  })
+  @IsOptional()
+  @IsIn(['both', 'either'])
+  readonly activationMode?: 'both' | 'either';
 
   @ApiPropertyOptional({ default: '100000000' })
   @IsOptional()

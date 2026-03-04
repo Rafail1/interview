@@ -22,6 +22,9 @@ export class InPlayRunStatusResponseDto {
   @ApiProperty({ nullable: true, type: [String] })
   readonly symbols: string[] | null;
 
+  @ApiProperty({ enum: ['both', 'either'] })
+  readonly activationMode: 'both' | 'either';
+
   @ApiProperty()
   readonly windowSize: number;
 

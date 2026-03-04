@@ -5,6 +5,7 @@ export type CreateInPlayRunInput = {
   startTime: bigint;
   endTime: bigint;
   symbols?: string[] | null;
+  activationMode: 'both' | 'either';
   windowSize: number;
   quoteVolumeThreshold: string;
   volatilityThreshold: string;
@@ -18,6 +19,7 @@ export type InPlayRunView = {
   startTime: string;
   endTime: string;
   symbols: string[] | null;
+  activationMode: 'both' | 'either';
   windowSize: number;
   quoteVolumeThreshold: string;
   volatilityThreshold: string;
@@ -40,6 +42,7 @@ export type SaveInPlayRangeInput = {
   activeWindows: number;
   avgQuoteVolume: string;
   maxVolatilityPercent: string;
+  activationReason: 'both' | 'volume_only' | 'volatility_only';
 };
 
 export type InPlayRangeView = {
@@ -54,6 +57,7 @@ export type InPlayRangeView = {
   activeWindows: number;
   avgQuoteVolume: string;
   maxVolatilityPercent: string;
+  activationReason: 'both' | 'volume_only' | 'volatility_only';
   createdAt: Date;
 };
 

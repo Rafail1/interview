@@ -263,6 +263,7 @@
             <td>${escapeHtml(range.activeWindows)}</td>
             <td>${escapeHtml(range.avgQuoteVolume)}</td>
             <td>${escapeHtml(range.maxVolatilityPercent)}</td>
+            <td>${escapeHtml(range.activationReason || "both")}</td>
           </tr>
         `;
       })
@@ -279,6 +280,7 @@
             <th>Active Windows</th>
             <th>Avg Quote Vol</th>
             <th>Max Volatility %</th>
+            <th>Reason</th>
           </tr>
         </thead>
         <tbody>${rows}</tbody>
@@ -294,7 +296,13 @@
     for (const range of ranges) {
       const startSec = toBarOpenSeconds(range.startTime, interval);
       const endSec = toBarOpenSeconds(range.endTime, interval);
-      const color = "#2a65d9";
+      const reason = range.activationReason || "both";
+      const color =
+        reason === "volume_only"
+          ? "#d07a00"
+          : reason === "volatility_only"
+            ? "#cc5a38"
+            : "#2a65d9";
       const topSeries = chart.addLineSeries({
         color,
         lineWidth: 1,

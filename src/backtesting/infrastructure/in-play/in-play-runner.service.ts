@@ -78,12 +78,13 @@ export class InPlayRunnerService implements IInPlayRunner {
       const symbols = await this.resolveSymbols(run.symbols, run.interval);
       await this.repository.setTotalSymbols(runId, symbols.length);
 
-      for (const symbol of symbols) {
+    for (const symbol of symbols) {
         const ranges = await this.detectRangesForSymbol(
           symbol,
           run.interval,
           BigInt(run.startTime),
           BigInt(run.endTime),
+          run.activationMode,
           run.windowSize,
           new Decimal(run.quoteVolumeThreshold),
           new Decimal(run.volatilityThreshold),
@@ -129,6 +130,7 @@ export class InPlayRunnerService implements IInPlayRunner {
     interval: string,
     startTimeMs: bigint,
     endTimeMs: bigint,
+    activationMode: 'both' | 'either',
     windowSize: number,
     quoteVolumeThreshold: Decimal,
     volatilityThresholdPercent: Decimal,
@@ -144,6 +146,11 @@ export class InPlayRunnerService implements IInPlayRunner {
       activeWindows: number;
       sumQuoteVolume: Decimal;
       maxVolatilityPercent: Decimal;
+      reasonCounts: {
+        both: number;
+        volume_only: number;
+        volatility_only: number;
+      };
     } | null = null;
 
     for await (const candle of this.marketDataRepository.getCandleStream(
@@ -184,9 +191,20 @@ export class InPlayRunnerService implements IInPlayRunner {
         .dividedBy(denominator)
         .times(100);
 
-      const isActive =
-        windowQuoteVolume.greaterThanOrEqualTo(quoteVolumeThreshold) &&
+      const quoteVolumeActive =
+        windowQuoteVolume.greaterThanOrEqualTo(quoteVolumeThreshold);
+      const volatilityActive =
         volatilityPercent.greaterThanOrEqualTo(volatilityThresholdPercent);
+      const isActive =
+        activationMode === 'both'
+          ? quoteVolumeActive && volatilityActive
+          : quoteVolumeActive || volatilityActive;
+      const activationReason =
+        quoteVolumeActive && volatilityActive
+          ? 'both'
+          : quoteVolumeActive
+            ? 'volume_only'
+            : 'volatility_only';
 
       if (!isActive) {
         if (currentRange) {
@@ -202,6 +220,7 @@ export class InPlayRunnerService implements IInPlayRunner {
               .dividedBy(currentRange.activeWindows)
               .toFixed(8),
             maxVolatilityPercent: currentRange.maxVolatilityPercent.toFixed(8),
+            activationReason: this.pickReason(currentRange.reasonCounts),
           });
           currentRange = null;
         }
@@ -222,6 +241,11 @@ export class InPlayRunnerService implements IInPlayRunner {
           activeWindows: 1,
           sumQuoteVolume: windowQuoteVolume,
           maxVolatilityPercent: volatilityPercent,
+          reasonCounts: {
+            both: activationReason === 'both' ? 1 : 0,
+            volume_only: activationReason === 'volume_only' ? 1 : 0,
+            volatility_only: activationReason === 'volatility_only' ? 1 : 0,
+          },
         };
         continue;
       }
@@ -240,6 +264,7 @@ export class InPlayRunnerService implements IInPlayRunner {
       if (volatilityPercent.greaterThan(currentRange.maxVolatilityPercent)) {
         currentRange.maxVolatilityPercent = volatilityPercent;
       }
+      currentRange.reasonCounts[activationReason] += 1;
     }
 
     if (currentRange) {
@@ -255,10 +280,28 @@ export class InPlayRunnerService implements IInPlayRunner {
           .dividedBy(currentRange.activeWindows)
           .toFixed(8),
         maxVolatilityPercent: currentRange.maxVolatilityPercent.toFixed(8),
+        activationReason: this.pickReason(currentRange.reasonCounts),
       });
     }
 
     return ranges;
+  }
+
+  private pickReason(reasonCounts: {
+    both: number;
+    volume_only: number;
+    volatility_only: number;
+  }): 'both' | 'volume_only' | 'volatility_only' {
+    if (
+      reasonCounts.both >= reasonCounts.volume_only &&
+      reasonCounts.both >= reasonCounts.volatility_only
+    ) {
+      return 'both';
+    }
+    if (reasonCounts.volume_only >= reasonCounts.volatility_only) {
+      return 'volume_only';
+    }
+    return 'volatility_only';
   }
 }
 

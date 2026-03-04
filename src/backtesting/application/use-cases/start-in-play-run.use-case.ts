@@ -35,6 +35,7 @@ export class StartInPlayRunUseCase {
     }
 
     const windowSize = request.windowSize ?? 24;
+    const activationMode = request.activationMode ?? 'both';
     const quoteVolumeThreshold = request.quoteVolumeThreshold ?? '100000000';
     const volatilityThreshold = request.volatilityThreshold ?? '3';
     if (new Decimal(quoteVolumeThreshold).isNegative()) {
@@ -54,6 +55,7 @@ export class StartInPlayRunUseCase {
       startTime: BigInt(startTime),
       endTime: BigInt(endTime),
       symbols,
+      activationMode,
       windowSize,
       quoteVolumeThreshold,
       volatilityThreshold,

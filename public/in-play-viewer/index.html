@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>In-Play Viewer</title>
+    <link rel="stylesheet" href="/in-play-viewer/styles.css" />
+  </head>
+  <body>
+    <main class="layout">
+      <header class="topbar">
+        <h1>In-Play Viewer</h1>
+        <p>Visualize detected in-play ranges only.</p>
+      </header>
+
+      <section class="controls">
+        <label for="apiBase">API Base</label>
+        <input id="apiBase" type="text" placeholder="http://localhost:3000" />
+
+        <label for="runId">In-Play Run ID</label>
+        <input id="runId" type="text" placeholder="paste in-play run id" />
+
+        <label for="symbol">Symbol</label>
+        <input id="symbol" type="text" placeholder="BTCUSDT" />
+
+        <button id="loadBtn" type="button">Load In-Play</button>
+      </section>
+
+      <section class="stats" id="stats"></section>
+
+      <section class="chart-wrap">
+        <div id="chart"></div>
+      </section>
+
+      <section class="ranges-wrap">
+        <h2>Ranges</h2>
+        <div id="ranges"></div>
+      </section>
+    </main>
+
+    <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+    <script src="/in-play-viewer/app.js"></script>
+  </body>
+  </html>
