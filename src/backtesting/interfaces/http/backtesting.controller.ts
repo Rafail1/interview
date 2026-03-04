@@ -24,6 +24,7 @@ import { GetCandleIngestionRunnerStatusUseCase } from 'src/backtesting/applicati
 import { StartInPlayRunUseCase } from 'src/backtesting/application/use-cases/start-in-play-run.use-case';
 import { GetInPlayRunStatusUseCase } from 'src/backtesting/application/use-cases/get-in-play-run-status.use-case';
 import { ListInPlayRangesUseCase } from 'src/backtesting/application/use-cases/list-in-play-ranges.use-case';
+import { ListInPlayFvgZonesUseCase } from 'src/backtesting/application/use-cases/list-in-play-fvg-zones.use-case';
 import { GetCandleIngestionJobStatusUseCase } from 'src/backtesting/application/use-cases/get-candle-ingestion-job-status.use-case';
 import { GetCandleIngestionJobDetailsUseCase } from 'src/backtesting/application/use-cases/get-candle-ingestion-job-details.use-case';
 import { GetCandleIngestionJobSymbolRunsUseCase } from 'src/backtesting/application/use-cases/get-candle-ingestion-job-symbol-runs.use-case';
@@ -73,6 +74,8 @@ import { StartInPlayRunResponseDto } from '../dtos/start-in-play-run-response.dt
 import { InPlayRunStatusResponseDto } from '../dtos/in-play-run-status-response.dto';
 import { ListInPlayRangesQueryDto } from '../dtos/list-in-play-ranges-query.dto';
 import { ListInPlayRangesResponseDto } from '../dtos/list-in-play-ranges-response.dto';
+import { ListInPlayFvgZonesQueryDto } from '../dtos/list-in-play-fvg-zones-query.dto';
+import { ListInPlayFvgZonesResponseDto } from '../dtos/list-in-play-fvg-zones-response.dto';
 
 @ApiTags('backtesting')
 @Controller('backtesting')
@@ -85,6 +88,7 @@ export class BacktestingController {
     private readonly startInPlayRunUseCase: StartInPlayRunUseCase,
     private readonly getInPlayRunStatusUseCase: GetInPlayRunStatusUseCase,
     private readonly listInPlayRangesUseCase: ListInPlayRangesUseCase,
+    private readonly listInPlayFvgZonesUseCase: ListInPlayFvgZonesUseCase,
     private readonly getCandleIngestionJobStatusUseCase: GetCandleIngestionJobStatusUseCase,
     private readonly getCandleIngestionJobDetailsUseCase: GetCandleIngestionJobDetailsUseCase,
     private readonly getCandleIngestionJobSymbolRunsUseCase: GetCandleIngestionJobSymbolRunsUseCase,
@@ -193,6 +197,21 @@ export class BacktestingController {
     @Query() query: ListInPlayRangesQueryDto,
   ): Promise<ListInPlayRangesResponseDto> {
     const response = await this.listInPlayRangesUseCase.execute(runId, query);
+    if (!response) {
+      throw new NotFoundException(`In-play run not found: ${runId}`);
+    }
+    return response;
+  }
+
+  @Get('in-play/runs/:runId/fvg-zones')
+  @ApiOperation({ summary: 'List 15m FVG zones reconstructed for in-play ranges' })
+  @ApiOkResponse({ type: ListInPlayFvgZonesResponseDto })
+  @ApiNotFoundResponse({ description: 'In-play run not found' })
+  public async listInPlayFvgZones(
+    @Param('runId') runId: string,
+    @Query() query: ListInPlayFvgZonesQueryDto,
+  ): Promise<ListInPlayFvgZonesResponseDto> {
+    const response = await this.listInPlayFvgZonesUseCase.execute(runId, query);
     if (!response) {
       throw new NotFoundException(`In-play run not found: ${runId}`);
     }

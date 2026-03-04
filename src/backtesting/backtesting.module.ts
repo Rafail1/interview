@@ -8,6 +8,7 @@ import { GetCandleIngestionRunnerStatusUseCase } from './application/use-cases/g
 import { StartInPlayRunUseCase } from './application/use-cases/start-in-play-run.use-case';
 import { GetInPlayRunStatusUseCase } from './application/use-cases/get-in-play-run-status.use-case';
 import { ListInPlayRangesUseCase } from './application/use-cases/list-in-play-ranges.use-case';
+import { ListInPlayFvgZonesUseCase } from './application/use-cases/list-in-play-fvg-zones.use-case';
 import { GetCandleIngestionJobStatusUseCase } from './application/use-cases/get-candle-ingestion-job-status.use-case';
 import { GetCandleIngestionJobDetailsUseCase } from './application/use-cases/get-candle-ingestion-job-details.use-case';
 import { GetCandleIngestionJobSymbolRunsUseCase } from './application/use-cases/get-candle-ingestion-job-symbol-runs.use-case';
@@ -67,6 +68,7 @@ import { LOGGER_TOKEN } from 'src/core/interfaces/logger.interface';
     StartInPlayRunUseCase,
     GetInPlayRunStatusUseCase,
     ListInPlayRangesUseCase,
+    ListInPlayFvgZonesUseCase,
     GetCandleIngestionJobStatusUseCase,
     GetCandleIngestionJobDetailsUseCase,
     GetCandleIngestionJobSymbolRunsUseCase,

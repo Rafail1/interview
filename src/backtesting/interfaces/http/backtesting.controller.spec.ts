@@ -10,6 +10,7 @@ type UseCaseMocks = {
   startInPlayRunUseCaseMock: { execute: jest.Mock };
   getInPlayRunStatusUseCaseMock: { execute: jest.Mock };
   listInPlayRangesUseCaseMock: { execute: jest.Mock };
+  listInPlayFvgZonesUseCaseMock: { execute: jest.Mock };
   getCandleIngestionJobStatusUseCaseMock: { execute: jest.Mock };
   getCandleIngestionJobDetailsUseCaseMock: { execute: jest.Mock };
   getCandleIngestionJobSymbolRunsUseCaseMock: { execute: jest.Mock };
@@ -38,6 +39,7 @@ function makeController(overrides?: Partial<UseCaseMocks>) {
     startInPlayRunUseCaseMock: { execute: jest.fn() },
     getInPlayRunStatusUseCaseMock: { execute: jest.fn() },
     listInPlayRangesUseCaseMock: { execute: jest.fn() },
+    listInPlayFvgZonesUseCaseMock: { execute: jest.fn() },
     getCandleIngestionJobStatusUseCaseMock: { execute: jest.fn() },
     getCandleIngestionJobDetailsUseCaseMock: { execute: jest.fn() },
     getCandleIngestionJobSymbolRunsUseCaseMock: { execute: jest.fn() },
@@ -66,6 +68,7 @@ function makeController(overrides?: Partial<UseCaseMocks>) {
     mocks.startInPlayRunUseCaseMock as any,
     mocks.getInPlayRunStatusUseCaseMock as any,
     mocks.listInPlayRangesUseCaseMock as any,
+    mocks.listInPlayFvgZonesUseCaseMock as any,
     mocks.getCandleIngestionJobStatusUseCaseMock as any,
     mocks.getCandleIngestionJobDetailsUseCaseMock as any,
     mocks.getCandleIngestionJobSymbolRunsUseCaseMock as any,
