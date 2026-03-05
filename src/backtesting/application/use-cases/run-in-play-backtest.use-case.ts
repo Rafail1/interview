@@ -87,6 +87,7 @@ export class RunInPlayBacktestUseCase {
     let losingTrades = 0;
     let totalPnL = new Decimal(0);
     let mergedWindowsCount = 0;
+    let overallDiagnostics: Record<string, number> = {};
 
     const perSymbol: RunInPlayBacktestResponseDto['perSymbol'] = [];
     for (const [currentSymbol, symbolWindows] of bySymbol.entries()) {
@@ -116,6 +117,7 @@ export class RunInPlayBacktestUseCase {
 
       const trades = this.tradeSimulator.getClosedTrades();
       const metrics = MetricsCalculator.calculateMetrics(trades, initialBalance);
+      const diagnostics = this.strategyEvaluator.getDiagnostics?.() ?? {};
 
       processedCandles += symbolProcessedCandles;
       generatedSignals += symbolGeneratedSignals;
@@ -123,6 +125,7 @@ export class RunInPlayBacktestUseCase {
       winningTrades += metrics.winningTrades;
       losingTrades += metrics.losingTrades;
       totalPnL = totalPnL.plus(metrics.totalPnL);
+      overallDiagnostics = this.mergeDiagnostics(overallDiagnostics, diagnostics);
 
       perSymbol.push({
         symbol: currentSymbol,
@@ -135,6 +138,7 @@ export class RunInPlayBacktestUseCase {
         losingTrades: metrics.losingTrades,
         winRate: Number(metrics.winRate),
         totalPnL: metrics.totalPnL,
+        diagnostics,
       });
     }
 
@@ -154,6 +158,7 @@ export class RunInPlayBacktestUseCase {
       losingTrades,
       winRate: overallWinRate,
       totalPnL: totalPnL.toFixed(2),
+      diagnostics: overallDiagnostics,
       perSymbol,
     };
   }
@@ -268,5 +273,16 @@ export class RunInPlayBacktestUseCase {
       this.inRange(lowerCandle, higherCandle) &&
       lowerCandle.getCloseTime().isAfterOrEqual(higherCandle.getCloseTime())
     );
+  }
+
+  private mergeDiagnostics(
+    acc: Record<string, number>,
+    value: Record<string, number>,
+  ): Record<string, number> {
+    const result = { ...acc };
+    for (const [key, count] of Object.entries(value)) {
+      result[key] = (result[key] ?? 0) + count;
+    }
+    return result;
   }
 }

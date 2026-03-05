@@ -23,6 +23,7 @@ import { StartCandleIngestionRunnerUseCase } from 'src/backtesting/application/u
 import { GetCandleIngestionRunnerStatusUseCase } from 'src/backtesting/application/use-cases/get-candle-ingestion-runner-status.use-case';
 import { StartInPlayRunUseCase } from 'src/backtesting/application/use-cases/start-in-play-run.use-case';
 import { GetInPlayRunStatusUseCase } from 'src/backtesting/application/use-cases/get-in-play-run-status.use-case';
+import { ListInPlayRunsUseCase } from 'src/backtesting/application/use-cases/list-in-play-runs.use-case';
 import { ListInPlayRangesUseCase } from 'src/backtesting/application/use-cases/list-in-play-ranges.use-case';
 import { ListInPlayFvgZonesUseCase } from 'src/backtesting/application/use-cases/list-in-play-fvg-zones.use-case';
 import { GenerateInPlayEntryWindowsUseCase } from 'src/backtesting/application/use-cases/generate-in-play-entry-windows.use-case';
@@ -75,6 +76,8 @@ import { CandleIngestionRunnerStatusResponseDto } from '../dtos/candle-ingestion
 import { StartInPlayRunRequestDto } from '../dtos/start-in-play-run-request.dto';
 import { StartInPlayRunResponseDto } from '../dtos/start-in-play-run-response.dto';
 import { InPlayRunStatusResponseDto } from '../dtos/in-play-run-status-response.dto';
+import { ListInPlayRunsQueryDto } from '../dtos/list-in-play-runs-query.dto';
+import { ListInPlayRunsResponseDto } from '../dtos/list-in-play-runs-response.dto';
 import { ListInPlayRangesQueryDto } from '../dtos/list-in-play-ranges-query.dto';
 import { ListInPlayRangesResponseDto } from '../dtos/list-in-play-ranges-response.dto';
 import { ListInPlayFvgZonesQueryDto } from '../dtos/list-in-play-fvg-zones-query.dto';
@@ -96,6 +99,7 @@ export class BacktestingController {
     private readonly getCandleIngestionRunnerStatusUseCase: GetCandleIngestionRunnerStatusUseCase,
     private readonly startInPlayRunUseCase: StartInPlayRunUseCase,
     private readonly getInPlayRunStatusUseCase: GetInPlayRunStatusUseCase,
+    private readonly listInPlayRunsUseCase: ListInPlayRunsUseCase,
     private readonly listInPlayRangesUseCase: ListInPlayRangesUseCase,
     private readonly listInPlayFvgZonesUseCase: ListInPlayFvgZonesUseCase,
     private readonly generateInPlayEntryWindowsUseCase: GenerateInPlayEntryWindowsUseCase,
@@ -184,6 +188,15 @@ export class BacktestingController {
       }
       throw error;
     }
+  }
+
+  @Get('in-play/runs')
+  @ApiOperation({ summary: 'List in-play runs' })
+  @ApiOkResponse({ type: ListInPlayRunsResponseDto })
+  public async listInPlayRuns(
+    @Query() query: ListInPlayRunsQueryDto,
+  ): Promise<ListInPlayRunsResponseDto> {
+    return this.listInPlayRunsUseCase.execute(query);
   }
 
   @Get('in-play/runs/:runId')

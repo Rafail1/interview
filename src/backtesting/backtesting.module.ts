@@ -8,6 +8,7 @@ import { GetCandleIngestionRunnerStatusUseCase } from './application/use-cases/g
 import { StartInPlayRunUseCase } from './application/use-cases/start-in-play-run.use-case';
 import { GetInPlayRunStatusUseCase } from './application/use-cases/get-in-play-run-status.use-case';
 import { ListInPlayRangesUseCase } from './application/use-cases/list-in-play-ranges.use-case';
+import { ListInPlayRunsUseCase } from './application/use-cases/list-in-play-runs.use-case';
 import { ListInPlayFvgZonesUseCase } from './application/use-cases/list-in-play-fvg-zones.use-case';
 import { GenerateInPlayEntryWindowsUseCase } from './application/use-cases/generate-in-play-entry-windows.use-case';
 import { ListInPlayEntryWindowsUseCase } from './application/use-cases/list-in-play-entry-windows.use-case';
@@ -70,6 +71,7 @@ import { LOGGER_TOKEN } from 'src/core/interfaces/logger.interface';
     GetCandleIngestionRunnerStatusUseCase,
     StartInPlayRunUseCase,
     GetInPlayRunStatusUseCase,
+    ListInPlayRunsUseCase,
     ListInPlayRangesUseCase,
     ListInPlayFvgZonesUseCase,
     GenerateInPlayEntryWindowsUseCase,

@@ -30,6 +30,12 @@ class InPlayBacktestSymbolSummaryDto {
 
   @ApiProperty()
   readonly totalPnL: string;
+
+  @ApiProperty({
+    type: 'object',
+    additionalProperties: { type: 'number' },
+  })
+  readonly diagnostics: Record<string, number>;
 }
 
 export class RunInPlayBacktestResponseDto {
@@ -68,6 +74,12 @@ export class RunInPlayBacktestResponseDto {
 
   @ApiProperty()
   readonly totalPnL: string;
+
+  @ApiProperty({
+    type: 'object',
+    additionalProperties: { type: 'number' },
+  })
+  readonly diagnostics: Record<string, number>;
 
   @ApiProperty({ type: [InPlayBacktestSymbolSummaryDto] })
   readonly perSymbol: InPlayBacktestSymbolSummaryDto[];

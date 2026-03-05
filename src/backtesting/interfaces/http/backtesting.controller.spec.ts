@@ -9,6 +9,7 @@ type UseCaseMocks = {
   getCandleIngestionRunnerStatusUseCaseMock: { execute: jest.Mock };
   startInPlayRunUseCaseMock: { execute: jest.Mock };
   getInPlayRunStatusUseCaseMock: { execute: jest.Mock };
+  listInPlayRunsUseCaseMock: { execute: jest.Mock };
   listInPlayRangesUseCaseMock: { execute: jest.Mock };
   listInPlayFvgZonesUseCaseMock: { execute: jest.Mock };
   generateInPlayEntryWindowsUseCaseMock: { execute: jest.Mock };
@@ -41,6 +42,7 @@ function makeController(overrides?: Partial<UseCaseMocks>) {
     getCandleIngestionRunnerStatusUseCaseMock: { execute: jest.fn() },
     startInPlayRunUseCaseMock: { execute: jest.fn() },
     getInPlayRunStatusUseCaseMock: { execute: jest.fn() },
+    listInPlayRunsUseCaseMock: { execute: jest.fn() },
     listInPlayRangesUseCaseMock: { execute: jest.fn() },
     listInPlayFvgZonesUseCaseMock: { execute: jest.fn() },
     generateInPlayEntryWindowsUseCaseMock: { execute: jest.fn() },
@@ -73,6 +75,7 @@ function makeController(overrides?: Partial<UseCaseMocks>) {
     mocks.getCandleIngestionRunnerStatusUseCaseMock as any,
     mocks.startInPlayRunUseCaseMock as any,
     mocks.getInPlayRunStatusUseCaseMock as any,
+    mocks.listInPlayRunsUseCaseMock as any,
     mocks.listInPlayRangesUseCaseMock as any,
     mocks.listInPlayFvgZonesUseCaseMock as any,
     mocks.generateInPlayEntryWindowsUseCaseMock as any,
@@ -235,6 +238,47 @@ describe('BacktestingController', () => {
       runId: 'inplay-1',
       status: 'pending',
     });
+  });
+
+  it('listInPlayRuns returns paged run list', async () => {
+    const { controller, mocks } = makeController({
+      listInPlayRunsUseCaseMock: {
+        execute: jest.fn().mockResolvedValue({
+          items: [
+            {
+              id: 'inplay-1',
+              status: 'completed',
+              errorMessage: null,
+              interval: '15m',
+              startTime: '1760000000000',
+              endTime: '1760100000000',
+              symbols: ['BTCUSDT'],
+              activationMode: 'both',
+              windowSize: 24,
+              quoteVolumeThreshold: '100000000',
+              volatilityThreshold: '3',
+              totalSymbols: 10,
+              processedSymbols: 10,
+              rangesCount: 20,
+              startedAt: new Date('2026-03-04T00:00:00.000Z'),
+              completedAt: new Date('2026-03-04T00:10:00.000Z'),
+              createdAt: new Date('2026-03-04T00:00:00.000Z'),
+              updatedAt: new Date('2026-03-04T00:10:00.000Z'),
+            },
+          ],
+          page: 1,
+          limit: 20,
+          total: 1,
+        }),
+      },
+    });
+
+    const query = { status: 'completed' as const, page: 1, limit: 20 };
+    const result = await controller.listInPlayRuns(query);
+
+    expect(mocks.listInPlayRunsUseCaseMock.execute).toHaveBeenCalledWith(query);
+    expect(result.total).toBe(1);
+    expect(result.items[0]).toHaveProperty('id', 'inplay-1');
   });
 
   it('listInPlayRanges returns ranges for existing run', async () => {

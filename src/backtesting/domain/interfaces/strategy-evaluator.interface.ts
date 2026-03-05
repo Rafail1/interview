@@ -23,6 +23,11 @@ export interface IStrategyEvaluator {
   evaluate(candle1m: Candle, candle15m: Candle | null): Signal[];
 
   /**
+   * Optional diagnostics counters for debugging signal generation flow.
+   */
+  getDiagnostics?(): Record<string, number>;
+
+  /**
    * Batch reset for new backtest
    */
   reset(): void;

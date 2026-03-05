@@ -118,6 +118,16 @@ export interface IInPlayRunRepository {
     runId: string,
     symbol?: string,
   ): Promise<InPlayEntryWindowView[] | null>;
+  listRuns(input: {
+    status?: InPlayRunStatus;
+    page: number;
+    limit: number;
+  }): Promise<{
+    items: InPlayRunView[];
+    page: number;
+    limit: number;
+    total: number;
+  }>;
 }
 
 export const IN_PLAY_RUN_REPOSITORY_TOKEN = Symbol('IInPlayRunRepository');

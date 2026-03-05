@@ -29,6 +29,7 @@ export class StrategyEvaluator implements IStrategyEvaluator {
   private lastProcessedHigherCloseMs: bigint | null = null;
   private minFvgSizePercent = StrategyEvaluator.DEFAULT_MIN_FVG_SIZE_PERCENT;
   private maxFvgSizePercent = StrategyEvaluator.DEFAULT_MAX_FVG_SIZE_PERCENT;
+  private readonly diagnostics: Record<string, number> = {};
 
   constructor(
     @Inject(FVG_DETECTOR_TOKEN) private readonly fvgDetector: IFvgDetector,
@@ -54,11 +55,14 @@ export class StrategyEvaluator implements IStrategyEvaluator {
   }
 
   public evaluate(candle1m: Candle, candle15m: Candle | null = null): Signal[] {
+    this.incrementDiagnostic('processedCandles');
     if (candle15m) {
+      this.incrementDiagnostic('higherContextProvided');
       const higherCloseMs = candle15m.getCloseTime().toMs();
       if (this.lastProcessedHigherCloseMs !== higherCloseMs) {
         this.fvgDetector.detect(candle15m);
         this.lastProcessedHigherCloseMs = higherCloseMs;
+        this.incrementDiagnostic('higherContextCandleProcessed');
       }
     }
 
@@ -66,10 +70,12 @@ export class StrategyEvaluator implements IStrategyEvaluator {
     this.removeStaleReactions();
     const structure = this.structureDetector.detect(candle1m);
     if (!structure) {
+      this.incrementDiagnostic('structureMissing');
       return [];
     }
     const bosType = structure.getBoSType();
     if (!bosType) {
+      this.incrementDiagnostic('bosMissing');
       return [];
     }
 
@@ -79,18 +85,22 @@ export class StrategyEvaluator implements IStrategyEvaluator {
     const timeMs = time.toMs();
 
     if (bosType === 'bullish') {
+      this.incrementDiagnostic('bosBullish');
       const bullishZoneId = this.getMatchedReaction('bullish', timeMs);
       if (bullishZoneId) {
         if (this.signaledZoneIds.has(bullishZoneId)) {
+          this.incrementDiagnostic('dedupedBySignaledZone');
           this.consumeReactions('bullish', timeMs);
           return [];
         }
         const matchedZone = this.getZoneById(bullishZoneId);
         this.consumeReactions('bullish', timeMs);
         if (!this.isAllowedZoneSize(matchedZone, price)) {
+          this.incrementDiagnostic('filteredByFvgSize');
           return [];
         }
         this.signaledZoneIds.add(bullishZoneId);
+        this.incrementDiagnostic('signalBuy');
         return [
           Signal.createBuy(
             signalId,
@@ -113,21 +123,26 @@ export class StrategyEvaluator implements IStrategyEvaluator {
           ),
         ];
       }
+      this.incrementDiagnostic('noReactionForBos');
       return [];
     }
 
+    this.incrementDiagnostic('bosBearish');
     const bearishZoneId = this.getMatchedReaction('bearish', timeMs);
     if (bearishZoneId) {
       if (this.signaledZoneIds.has(bearishZoneId)) {
+        this.incrementDiagnostic('dedupedBySignaledZone');
         this.consumeReactions('bearish', timeMs);
         return [];
       }
       const matchedZone = this.getZoneById(bearishZoneId);
       this.consumeReactions('bearish', timeMs);
       if (!this.isAllowedZoneSize(matchedZone, price)) {
+        this.incrementDiagnostic('filteredByFvgSize');
         return [];
       }
       this.signaledZoneIds.add(bearishZoneId);
+      this.incrementDiagnostic('signalSell');
       return [
         Signal.createSell(
           signalId,
@@ -151,6 +166,7 @@ export class StrategyEvaluator implements IStrategyEvaluator {
       ];
     }
 
+    this.incrementDiagnostic('noReactionForBos');
     return [];
   }
 
@@ -160,8 +176,21 @@ export class StrategyEvaluator implements IStrategyEvaluator {
     this.lastProcessedHigherCloseMs = null;
     this.minFvgSizePercent = StrategyEvaluator.DEFAULT_MIN_FVG_SIZE_PERCENT;
     this.maxFvgSizePercent = StrategyEvaluator.DEFAULT_MAX_FVG_SIZE_PERCENT;
+    for (const key of Object.keys(this.diagnostics)) {
+      delete this.diagnostics[key];
+    }
     this.fvgDetector.reset();
     this.structureDetector.reset();
+  }
+
+  public getDiagnostics(): Record<string, number> {
+    return {
+      ...this.diagnostics,
+      activeReactions: this.reactedZones.size,
+      signaledZones: this.signaledZoneIds.size,
+      minFvgSizePercent: this.minFvgSizePercent,
+      maxFvgSizePercent: this.maxFvgSizePercent,
+    };
   }
 
   private trackReactions(candle1m: Candle): void {
@@ -174,12 +203,18 @@ export class StrategyEvaluator implements IStrategyEvaluator {
         continue;
       }
       if (zone.isBullish() && this.isBullishReaction(zone, candle1m)) {
+        if (!this.reactedZones.has(zone.getId())) {
+          this.incrementDiagnostic('reactionTrackedBullish');
+        }
         this.reactedZones.set(zone.getId(), {
           direction: 'bullish',
           reactedAtMs: candle1m.getCloseTime().toMs(),
         });
       }
       if (zone.isBearish() && this.isBearishReaction(zone, candle1m)) {
+        if (!this.reactedZones.has(zone.getId())) {
+          this.incrementDiagnostic('reactionTrackedBearish');
+        }
         this.reactedZones.set(zone.getId(), {
           direction: 'bearish',
           reactedAtMs: candle1m.getCloseTime().toMs(),
@@ -275,6 +310,10 @@ export class StrategyEvaluator implements IStrategyEvaluator {
       return null;
     }
     return width.dividedBy(base).times(100);
+  }
+
+  private incrementDiagnostic(key: string): void {
+    this.diagnostics[key] = (this.diagnostics[key] ?? 0) + 1;
   }
 
 }

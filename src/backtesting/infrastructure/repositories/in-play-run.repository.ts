@@ -248,6 +248,36 @@ export class InPlayRunRepository implements IInPlayRunRepository {
     }));
   }
 
+  public async listRuns(input: {
+    status?: 'pending' | 'running' | 'completed' | 'failed';
+    page: number;
+    limit: number;
+  }): Promise<{
+    items: InPlayRunView[];
+    page: number;
+    limit: number;
+    total: number;
+  }> {
+    const where = input.status ? { status: input.status } : {};
+    const skip = (input.page - 1) * input.limit;
+    const [rows, total] = await this.prisma.$transaction([
+      this.prisma.inPlayRun.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: input.limit,
+      }),
+      this.prisma.inPlayRun.count({ where }),
+    ]);
+
+    return {
+      items: rows.map((row) => this.toRunView(row)),
+      page: input.page,
+      limit: input.limit,
+      total,
+    };
+  }
+
   private toRunView(row: any): InPlayRunView {
     return {
       id: row.id,
