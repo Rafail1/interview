@@ -15,6 +15,7 @@ type UseCaseMocks = {
   generateInPlayEntryWindowsUseCaseMock: { execute: jest.Mock };
   listInPlayEntryWindowsUseCaseMock: { execute: jest.Mock };
   runInPlayBacktestUseCaseMock: { execute: jest.Mock };
+  prefetchInPlay1mUseCaseMock: { execute: jest.Mock };
   getCandleIngestionJobStatusUseCaseMock: { execute: jest.Mock };
   getCandleIngestionJobDetailsUseCaseMock: { execute: jest.Mock };
   getCandleIngestionJobSymbolRunsUseCaseMock: { execute: jest.Mock };
@@ -48,6 +49,7 @@ function makeController(overrides?: Partial<UseCaseMocks>) {
     generateInPlayEntryWindowsUseCaseMock: { execute: jest.fn() },
     listInPlayEntryWindowsUseCaseMock: { execute: jest.fn() },
     runInPlayBacktestUseCaseMock: { execute: jest.fn() },
+    prefetchInPlay1mUseCaseMock: { execute: jest.fn() },
     getCandleIngestionJobStatusUseCaseMock: { execute: jest.fn() },
     getCandleIngestionJobDetailsUseCaseMock: { execute: jest.fn() },
     getCandleIngestionJobSymbolRunsUseCaseMock: { execute: jest.fn() },
@@ -81,6 +83,7 @@ function makeController(overrides?: Partial<UseCaseMocks>) {
     mocks.generateInPlayEntryWindowsUseCaseMock as any,
     mocks.listInPlayEntryWindowsUseCaseMock as any,
     mocks.runInPlayBacktestUseCaseMock as any,
+    mocks.prefetchInPlay1mUseCaseMock as any,
     mocks.getCandleIngestionJobStatusUseCaseMock as any,
     mocks.getCandleIngestionJobDetailsUseCaseMock as any,
     mocks.getCandleIngestionJobSymbolRunsUseCaseMock as any,
@@ -431,6 +434,55 @@ describe('BacktestingController', () => {
 
     await expect(
       controller.runInPlayBacktest('missing-run', { symbol: 'BTCUSDT' }),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('prefetchInPlay1m returns import jobs for run windows', async () => {
+    const { controller, mocks } = makeController({
+      prefetchInPlay1mUseCaseMock: {
+        execute: jest.fn().mockResolvedValue({
+          runId: 'inplay-1',
+          interval: '1m',
+          symbols: 1,
+          jobs: [
+            {
+              symbol: 'RIVERUSDT',
+              fromTime: '1760000000000',
+              toTime: '1760100000000',
+              fromDate: '2025-10-09T08:53:20.000Z',
+              toDate: '2025-10-10T12:40:00.000Z',
+              jobId: 'job-1',
+              status: 'pending',
+              filesQueued: 2,
+              downloadedCount: 0,
+              queuedPosition: 1,
+            },
+          ],
+        }),
+      },
+    });
+
+    const result = await controller.prefetchInPlay1m('inplay-1', {
+      symbol: 'RIVERUSDT',
+    });
+
+    expect(mocks.prefetchInPlay1mUseCaseMock.execute).toHaveBeenCalledWith(
+      'inplay-1',
+      { symbol: 'RIVERUSDT' },
+    );
+    expect(result).toHaveProperty('interval', '1m');
+    expect(result).toHaveProperty('jobs.0.symbol', 'RIVERUSDT');
+  });
+
+  it('prefetchInPlay1m throws NotFoundException when run missing', async () => {
+    const { controller } = makeController({
+      prefetchInPlay1mUseCaseMock: {
+        execute: jest.fn().mockResolvedValue(null),
+      },
+    });
+
+    await expect(
+      controller.prefetchInPlay1m('missing-run', { symbol: 'RIVERUSDT' }),
     ).rejects.toBeInstanceOf(NotFoundException);
   });
 

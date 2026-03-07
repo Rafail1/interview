@@ -15,6 +15,7 @@ type FvgMetadata = {
 @Injectable()
 export class TradeSimulator implements ITradeSimulator {
   private static readonly DEFAULT_INITIAL_BALANCE = new Decimal(10_000);
+  private static readonly FIXED_RISK_PERCENT_OF_START_BALANCE = new Decimal(1);
   private openTrade: Trade | null = null;
   private closedTrades: Trade[] = [];
   private readonly startingBalance: Decimal =
@@ -36,8 +37,8 @@ export class TradeSimulator implements ITradeSimulator {
       return null;
     }
 
-    const riskAmount = this.accountBalance
-      .times(riskModel.getRiskPercent())
+    const riskAmount = this.startingBalance
+      .times(TradeSimulator.FIXED_RISK_PERCENT_OF_START_BALANCE)
       .dividedBy(100);
     const tradeSide = type === 'BUY' ? 'BUY' : 'SELL';
     const stopLoss = this.resolveStopLossFromFvgOrRiskPercent(

@@ -34,7 +34,7 @@ export class Candle {
 
   /**
    * Factory: from Binance CSV row (fast path)
-   * CSV: [openTime, open, high, low, close, volume, closeTime, quoteAssetVolume, numberOfTrades, ...]
+   * CSV: [openTime, open, high, low, close, volume, closeTime, quoteAssetVolume, numberOfTrades, takerBuyBaseVolume, takerBuyQuoteVolume, ...]
    */
   public static fromBinanceRow(
     symbol: string,
@@ -53,13 +53,24 @@ export class Candle {
     const volume = row[5];
     const closeTimeMs = Number(row[6]);
     const quoteAssetVolume = row[7];
+    const takerBuyBaseVolume = row[9] ?? '0';
+    const takerBuyQuoteVolume = row[10] ?? '0';
 
     return Candle.create(
       symbol,
       Timeframe.from(timeframe),
       openTimeMs,
       closeTimeMs,
-      OHLCV.from(open, high, low, close, volume, quoteAssetVolume),
+      OHLCV.from(
+        open,
+        high,
+        low,
+        close,
+        volume,
+        quoteAssetVolume,
+        takerBuyBaseVolume,
+        takerBuyQuoteVolume,
+      ),
     );
   }
 

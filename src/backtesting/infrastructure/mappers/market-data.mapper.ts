@@ -19,6 +19,8 @@ export class MarketDataMapper {
         record.close,
         record.volume,
         record.quoteAssetVolume,
+        record.takerBuyBaseVolume,
+        record.takerBuyQuoteVolume,
       ),
     );
   }
@@ -39,8 +41,8 @@ export class MarketDataMapper {
       volume: ohlcv.getVolume().toString(),
       quoteAssetVolume: ohlcv.getQuoteAssetVolume().toString(),
       numberOfTrades: 0,
-      takerBuyBaseVolume: '0',
-      takerBuyQuoteVolume: '0',
+      takerBuyBaseVolume: ohlcv.getTakerBuyBaseVolume().toString(),
+      takerBuyQuoteVolume: ohlcv.getTakerBuyQuoteVolume().toString(),
     };
   }
 }

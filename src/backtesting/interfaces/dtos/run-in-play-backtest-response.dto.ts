@@ -1,5 +1,31 @@
 import { ApiProperty } from '@nestjs/swagger';
 
+class InPlayBacktestFilterResultDto {
+  @ApiProperty()
+  readonly code: string;
+
+  @ApiProperty()
+  readonly description: string;
+
+  @ApiProperty()
+  readonly acceptedSignals: number;
+
+  @ApiProperty()
+  readonly totalTrades: number;
+
+  @ApiProperty()
+  readonly winningTrades: number;
+
+  @ApiProperty()
+  readonly losingTrades: number;
+
+  @ApiProperty()
+  readonly winRate: number;
+
+  @ApiProperty()
+  readonly totalPnL: string;
+}
+
 class InPlayBacktestSymbolSummaryDto {
   @ApiProperty()
   readonly symbol: string;
@@ -83,4 +109,7 @@ export class RunInPlayBacktestResponseDto {
 
   @ApiProperty({ type: [InPlayBacktestSymbolSummaryDto] })
   readonly perSymbol: InPlayBacktestSymbolSummaryDto[];
+
+  @ApiProperty({ type: [InPlayBacktestFilterResultDto] })
+  readonly filterResults: InPlayBacktestFilterResultDto[];
 }

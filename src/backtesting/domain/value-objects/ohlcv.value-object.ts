@@ -13,6 +13,8 @@ export class OHLCV {
     private readonly close: Price,
     private readonly volume: Decimal,
     private readonly quoteAssetVolume: Decimal,
+    private readonly takerBuyBaseVolume: Decimal,
+    private readonly takerBuyQuoteVolume: Decimal,
   ) {
     // Validate: H >= O,C and L <= O,C
     if (high.isLessThan(open) || high.isLessThan(close)) {
@@ -39,6 +41,8 @@ export class OHLCV {
     close: string | number,
     volume: string | number,
     quoteAssetVolume: string | number = 0,
+    takerBuyBaseVolume: string | number = 0,
+    takerBuyQuoteVolume: string | number = 0,
   ): OHLCV {
     return new OHLCV(
       Price.from(open),
@@ -47,6 +51,8 @@ export class OHLCV {
       Price.from(close),
       new Decimal(volume),
       new Decimal(quoteAssetVolume),
+      new Decimal(takerBuyBaseVolume),
+      new Decimal(takerBuyQuoteVolume),
     );
   }
 
@@ -75,6 +81,14 @@ export class OHLCV {
 
   public getQuoteAssetVolume(): Decimal {
     return this.quoteAssetVolume;
+  }
+
+  public getTakerBuyBaseVolume(): Decimal {
+    return this.takerBuyBaseVolume;
+  }
+
+  public getTakerBuyQuoteVolume(): Decimal {
+    return this.takerBuyQuoteVolume;
   }
 
   /**
@@ -139,6 +153,8 @@ export class OHLCV {
       close: this.close.toString(),
       volume: this.volume.toString(),
       quoteAssetVolume: this.quoteAssetVolume.toString(),
+      takerBuyBaseVolume: this.takerBuyBaseVolume.toString(),
+      takerBuyQuoteVolume: this.takerBuyQuoteVolume.toString(),
     };
   }
 }

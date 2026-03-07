@@ -67,7 +67,7 @@ describe('StrategyEvaluator', () => {
     expect(fvgDetectorMock.detect).toHaveBeenCalledWith(higher);
   });
 
-  it('emits BUY only when bullish BOS appears after FVG touch', () => {
+  it('emits BUY on first bullish FVG mitigation touch', () => {
     const zone = FVGZone.createBullish(
       'zone-react',
       OHLCV.from('101', '102', '100', '101', '1', '1').getHigh(),
@@ -82,12 +82,7 @@ describe('StrategyEvaluator', () => {
     } as any;
 
     const structureDetectorMock = {
-      detect: jest
-        .fn()
-        .mockReturnValueOnce(null)
-        .mockReturnValueOnce({
-          getBoSType: () => 'bullish',
-        }),
+      detect: jest.fn().mockReturnValue(null),
       reset: jest.fn(),
     } as any;
 
@@ -116,14 +111,13 @@ describe('StrategyEvaluator', () => {
       higher,
     );
 
-    expect(first).toEqual([]);
-    expect(second).toHaveLength(1);
-    expect(second[0].getType()).toBe('BUY');
-    expect(second[0].getReason()).toBe('bullish_bos_after_fvg_touch_entry');
-    expect(second[0].getMetadata()).toEqual(
+    expect(first).toHaveLength(1);
+    expect(first[0].getType()).toBe('BUY');
+    expect(first[0].getReason()).toBe('bullish_fvg_first_mitigation_entry');
+    expect(first[0].getMetadata()).toEqual(
       expect.objectContaining({ reactedZoneId: 'zone-react' }),
     );
-    expect(second[0].getMetadata()).toEqual(
+    expect(first[0].getMetadata()).toEqual(
       expect.objectContaining({
         fvg: expect.objectContaining({
           lowerBound: expect.any(String),
@@ -132,6 +126,7 @@ describe('StrategyEvaluator', () => {
         }),
       }),
     );
+    expect(second).toEqual([]);
   });
 
   it('filters out FVG touch when zone is larger than max threshold', () => {
@@ -149,12 +144,7 @@ describe('StrategyEvaluator', () => {
     } as any;
 
     const structureDetectorMock = {
-      detect: jest
-        .fn()
-        .mockReturnValueOnce(null)
-        .mockReturnValueOnce({
-          getBoSType: () => 'bullish',
-        }),
+      detect: jest.fn().mockReturnValue(null),
       reset: jest.fn(),
     } as any;
 
@@ -200,12 +190,7 @@ describe('StrategyEvaluator', () => {
     } as any;
 
     const structureDetectorMock = {
-      detect: jest
-        .fn()
-        .mockReturnValueOnce(null)
-        .mockReturnValueOnce({
-          getBoSType: () => 'bullish',
-        }),
+      detect: jest.fn().mockReturnValue(null),
       reset: jest.fn(),
     } as any;
 
@@ -224,19 +209,10 @@ describe('StrategyEvaluator', () => {
       close: '101',
     });
 
-    evaluator.evaluate(reactionCandle, higher);
-    const signals = evaluator.evaluate(
-      makeCandle(1_700_000_060_000, '1m', {
-        open: '100',
-        high: '101',
-        low: '99.8',
-        close: '100.1',
-      }),
-      higher,
-    );
+    const signals = evaluator.evaluate(reactionCandle, higher);
     expect(signals).toHaveLength(1);
     expect(signals[0].getType()).toBe('BUY');
-    expect(signals[0].getReason()).toBe('bullish_bos_after_fvg_touch_entry');
+    expect(signals[0].getReason()).toBe('bullish_fvg_first_mitigation_entry');
   });
 
   it('emits only one entry signal per zone even on repeated touches', () => {
@@ -254,15 +230,7 @@ describe('StrategyEvaluator', () => {
     } as any;
 
     const structureDetectorMock = {
-      detect: jest
-        .fn()
-        .mockReturnValueOnce(null)
-        .mockReturnValueOnce({
-          getBoSType: () => 'bullish',
-        })
-        .mockReturnValueOnce({
-          getBoSType: () => 'bullish',
-        }),
+      detect: jest.fn().mockReturnValue(null),
       reset: jest.fn(),
     } as any;
 
@@ -299,9 +267,9 @@ describe('StrategyEvaluator', () => {
       higher,
     );
 
-    expect(firstSignals).toEqual([]);
-    expect(secondSignals).toHaveLength(1);
-    expect(secondSignals[0].getType()).toBe('BUY');
+    expect(firstSignals).toHaveLength(1);
+    expect(firstSignals[0].getType()).toBe('BUY');
+    expect(secondSignals).toEqual([]);
     expect(thirdSignals).toEqual([]);
   });
 });

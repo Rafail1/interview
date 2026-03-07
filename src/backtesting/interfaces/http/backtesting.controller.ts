@@ -29,6 +29,7 @@ import { ListInPlayFvgZonesUseCase } from 'src/backtesting/application/use-cases
 import { GenerateInPlayEntryWindowsUseCase } from 'src/backtesting/application/use-cases/generate-in-play-entry-windows.use-case';
 import { ListInPlayEntryWindowsUseCase } from 'src/backtesting/application/use-cases/list-in-play-entry-windows.use-case';
 import { RunInPlayBacktestUseCase } from 'src/backtesting/application/use-cases/run-in-play-backtest.use-case';
+import { PrefetchInPlay1mUseCase } from 'src/backtesting/application/use-cases/prefetch-in-play-1m.use-case';
 import { GetCandleIngestionJobStatusUseCase } from 'src/backtesting/application/use-cases/get-candle-ingestion-job-status.use-case';
 import { GetCandleIngestionJobDetailsUseCase } from 'src/backtesting/application/use-cases/get-candle-ingestion-job-details.use-case';
 import { GetCandleIngestionJobSymbolRunsUseCase } from 'src/backtesting/application/use-cases/get-candle-ingestion-job-symbol-runs.use-case';
@@ -88,6 +89,8 @@ import { ListInPlayEntryWindowsQueryDto } from '../dtos/list-in-play-entry-windo
 import { ListInPlayEntryWindowsResponseDto } from '../dtos/list-in-play-entry-windows-response.dto';
 import { RunInPlayBacktestRequestDto } from '../dtos/run-in-play-backtest-request.dto';
 import { RunInPlayBacktestResponseDto } from '../dtos/run-in-play-backtest-response.dto';
+import { PrefetchInPlay1mRequestDto } from '../dtos/prefetch-in-play-1m-request.dto';
+import { PrefetchInPlay1mResponseDto } from '../dtos/prefetch-in-play-1m-response.dto';
 
 @ApiTags('backtesting')
 @Controller('backtesting')
@@ -105,6 +108,7 @@ export class BacktestingController {
     private readonly generateInPlayEntryWindowsUseCase: GenerateInPlayEntryWindowsUseCase,
     private readonly listInPlayEntryWindowsUseCase: ListInPlayEntryWindowsUseCase,
     private readonly runInPlayBacktestUseCase: RunInPlayBacktestUseCase,
+    private readonly prefetchInPlay1mUseCase: PrefetchInPlay1mUseCase,
     private readonly getCandleIngestionJobStatusUseCase: GetCandleIngestionJobStatusUseCase,
     private readonly getCandleIngestionJobDetailsUseCase: GetCandleIngestionJobDetailsUseCase,
     private readonly getCandleIngestionJobSymbolRunsUseCase: GetCandleIngestionJobSymbolRunsUseCase,
@@ -299,6 +303,24 @@ export class BacktestingController {
       }
       throw error;
     }
+  }
+
+  @Post('in-play/runs/:runId/prefetch-1m')
+  @ApiOperation({
+    summary:
+      'Start 1m import jobs for symbols from in-play entry windows (merged range per symbol)',
+  })
+  @ApiCreatedResponse({ type: PrefetchInPlay1mResponseDto })
+  @ApiNotFoundResponse({ description: 'In-play run not found' })
+  public async prefetchInPlay1m(
+    @Param('runId') runId: string,
+    @Body() body: PrefetchInPlay1mRequestDto,
+  ): Promise<PrefetchInPlay1mResponseDto> {
+    const response = await this.prefetchInPlay1mUseCase.execute(runId, body);
+    if (!response) {
+      throw new NotFoundException(`In-play run not found: ${runId}`);
+    }
+    return response;
   }
 
   @Get('ingestion/runner/status')
